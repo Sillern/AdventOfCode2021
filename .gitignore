@@ -1,0 +1,7 @@
+*.lock
+target
+*.png
+*.yuv
+*.webm
+/frames/
+
