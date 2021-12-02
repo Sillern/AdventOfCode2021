@@ -1,4 +1,3 @@
-use itertools::Itertools;
 use regex::Regex;
 use std::env;
 
@@ -8,25 +7,15 @@ fn solve_part1(inputfile: String) -> usize {
 
     let re = Regex::new(r"(?P<command>(forward|down|up))\s(?P<units>\d+)").unwrap();
 
-    let mut horizontal = 0;
-    let mut depth = 0;
-    contents.lines().for_each(|line| {
+    let (horizontal, depth) = contents.lines().fold((0, 0), |(horizontal, depth), line| {
         let parsed = re.captures(line).unwrap();
         let units = parsed["units"].parse::<usize>().unwrap();
         match &parsed["command"] {
-            "forward" => {
-                horizontal += units;
-            }
-            "down" => {
-                depth += units;
-            }
-            "up" => {
-                depth -= units;
-            }
-            _ => {
-                println!("unknown command");
-            }
-        };
+            "forward" => (horizontal + units, depth),
+            "down" => (horizontal, depth + units),
+            "up" => (horizontal, depth - units),
+            _ => (horizontal, depth),
+        }
     });
     horizontal * depth
 }
@@ -37,28 +26,19 @@ fn solve_part2(inputfile: String) -> usize {
 
     let re = Regex::new(r"(?P<command>(forward|down|up))\s(?P<units>\d+)").unwrap();
 
-    let mut horizontal = 0;
-    let mut depth = 0;
-    let mut aim = 0;
-    contents.lines().for_each(|line| {
-        let parsed = re.captures(line).unwrap();
-        let units = parsed["units"].parse::<usize>().unwrap();
-        match &parsed["command"] {
-            "forward" => {
-                horizontal += units;
-                depth += aim * units;
-            }
-            "down" => {
-                aim += units;
-            }
-            "up" => {
-                aim -= units;
-            }
-            _ => {
-                println!("unknown command");
-            }
-        };
-    });
+    let (horizontal, depth, _) =
+        contents
+            .lines()
+            .fold((0, 0, 0), |(horizontal, depth, aim), line| {
+                let parsed = re.captures(line).unwrap();
+                let units = parsed["units"].parse::<usize>().unwrap();
+                match &parsed["command"] {
+                    "forward" => (horizontal + units, depth + aim * units, aim),
+                    "down" => (horizontal, depth, aim + units),
+                    "up" => (horizontal, depth, aim - units),
+                    _ => (horizontal, depth, aim),
+                }
+            });
     horizontal * depth
 }
 
