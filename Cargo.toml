@@ -16,3 +16,7 @@ criterion = "0.3"
 [[bin]]
 name = "day01"
 path = "day01/day01.rs"
+
+[[bin]]
+name = "day02"
+path = "day02/day02.rs"
