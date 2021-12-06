@@ -5,7 +5,7 @@ authors = ["Sebastian Jegerås <jegeras@gmail.com>"]
 
 edition = "2018"
 [dependencies]
-itertools = "0.8.1"
+itertools = "0.10.1"
 regex = "1"
 image = "0.22"
 rand = "0.7.2"
@@ -32,3 +32,7 @@ path = "day04/day04.rs"
 [[bin]]
 name = "day05"
 path = "day05/day05.rs"
+
+[[bin]]
+name = "day06"
+path = "day06/day06.rs"
