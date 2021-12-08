@@ -1,4 +1,5 @@
 use itertools::Itertools;
+use std::char;
 use std::collections::HashMap;
 use std::env;
 
@@ -98,10 +99,19 @@ fn solve_part2(inputfile: String) -> usize {
             .collect::<Vec<Vec<&str>>>();
 
         let inputs = decoded.iter().nth(0).unwrap();
+        let outputs = decoded
+            .iter()
+            .nth(1)
+            .unwrap()
+            .iter()
+            .map(|pattern| pattern.chars().sorted().collect::<String>())
+            .collect::<Vec<String>>();
+
         let sorted_inputs = inputs
             .iter()
+            .map(|pattern| pattern.chars().sorted().collect::<String>())
             .sorted_by(|a, b| Ord::cmp(&b.len(), &a.len()))
-            .collect::<Vec<&&str>>();
+            .collect::<Vec<String>>();
 
         let mut deduced_number_mapping = HashMap::new();
 
@@ -222,133 +232,165 @@ fn solve_part2(inputfile: String) -> usize {
             }
         }
 
-        for _ in (0..3) {
-            for pattern in sorted_inputs.clone() {
-                if deduced_number_mapping.values().contains(&&pattern) {
-                    continue;
-                }
+        for pattern in sorted_inputs.clone() {
+            if deduced_number_mapping.values().contains(&&pattern) {
+                continue;
+            }
 
-                let signals = pattern.chars().collect::<Vec<char>>();
+            let signals = pattern.chars().collect::<Vec<char>>();
 
-                let first_candidates = number_length_mapping[&pattern.len()]
-                    .iter()
-                    .filter_map(|candidate| {
-                        if !deduced_number_mapping.keys().contains(candidate) {
-                            let has_invalid_tiles =
-                                number_mapping[&candidate].iter().fold(0, |acc, number| {
-                                    if mapping[&number].len() != 1 {
-                                        return acc;
-                                    }
+            let first_candidates = number_length_mapping[&pattern.len()]
+                .iter()
+                .filter_map(|candidate| {
+                    if !deduced_number_mapping.keys().contains(candidate) {
+                        let has_invalid_tiles =
+                            number_mapping[&candidate].iter().fold(0, |acc, number| {
+                                if mapping[&number].len() != 1 {
+                                    return acc;
+                                }
 
-                                    acc + mapping[&number].iter().fold(
-                                        0,
-                                        |inner_acc, required_character| {
-                                            inner_acc
-                                                + if !pattern.chars().contains(required_character) {
-                                                    1
-                                                } else {
-                                                    0
-                                                }
-                                        },
-                                    )
-                                });
-                            if has_invalid_tiles == 0 {
-                                Some(*candidate)
-                            } else {
-                                None
-                            }
+                                acc + mapping[&number].iter().fold(
+                                    0,
+                                    |inner_acc, required_character| {
+                                        inner_acc
+                                            + if !pattern.chars().contains(required_character) {
+                                                1
+                                            } else {
+                                                0
+                                            }
+                                    },
+                                )
+                            });
+                        if has_invalid_tiles == 0 {
+                            Some(*candidate)
                         } else {
                             None
                         }
-                    })
-                    .collect::<Vec<usize>>();
-
-                let mut candidates = vec![first_candidates];
-
-                for signal in &signals {
-                    let possibilities = reverse_mapping.get(&signal).unwrap();
-
-                    match possibilities.len() {
-                        1 => {
-                            let candidate = possibilities[0];
-                            for candidate_list in &mut candidates {
-                                *candidate_list = candidate_list
-                                    .iter()
-                                    .filter(|e| reverse_number_mapping[&candidate].contains(e))
-                                    .map(|x| *x)
-                                    .collect();
-                            }
-                        }
-                        2 => {
-                            let has_both = possibilities.iter().all(|&possibility| {
-                                mapping[&possibility]
-                                    .iter()
-                                    .all(|character| signals.contains(character))
-                            });
-
-                            if has_both {
-                                for candidate_list in &mut candidates {
-                                    for candidate in possibilities {
-                                        let filtered_list = candidate_list
-                                            .iter()
-                                            .filter_map(|e| {
-                                                if reverse_number_mapping[&candidate].contains(e) {
-                                                    Some(*e)
-                                                } else {
-                                                    None
-                                                }
-                                            })
-                                            .collect::<Vec<usize>>();
-                                        if filtered_list.len() != 0 {
-                                            *candidate_list = filtered_list;
-                                        }
-                                    }
-                                }
-                            } else {
-                                let mut candidates_list = [candidates.clone(), candidates.clone()];
-
-                                for (index, candidate) in possibilities.iter().enumerate() {
-                                    for candidate_list in &mut candidates_list[index] {
-                                        let filtered_list = candidate_list
-                                            .iter()
-                                            .filter_map(|e| {
-                                                if reverse_number_mapping[&candidate].contains(e) {
-                                                    Some(*e)
-                                                } else {
-                                                    None
-                                                }
-                                            })
-                                            .collect::<Vec<usize>>();
-                                        if filtered_list.len() != 0 {
-                                            *candidate_list = filtered_list;
-                                        }
-                                    }
-                                }
-                                candidates = candidates_list[0].clone();
-                                candidates.extend(candidates_list[1].clone());
-                            }
-                        }
-                        _ => println!("Something broken"),
+                    } else {
+                        None
                     }
-                }
-                candidates = candidates.clone().into_iter().unique().collect();
-                if candidates.len() == 1 && candidates[0].len() == 1 {
-                    let single_match = candidates[0][0];
-                    deduced_number_mapping.insert(single_match, pattern);
+                })
+                .collect::<Vec<usize>>();
+
+            let mut required: Vec<usize> = vec![];
+            for signal in &signals {
+                let possibilities = reverse_mapping.get(&signal).unwrap();
+                match possibilities.len() {
+                    1 => required.extend(possibilities),
+                    2 => {
+                        let has_both = possibilities.iter().all(|&possibility| {
+                            mapping[&possibility]
+                                .iter()
+                                .all(|character| signals.contains(character))
+                        });
+
+                        if has_both {
+                            required.extend(possibilities);
+                        }
+                    }
+                    _ => println!("Something broken"),
+                };
+            }
+            required.sort();
+            required.dedup();
+
+            let mut candidates = vec![first_candidates
+                .iter()
+                .filter_map(|candidate| {
+                    if required
+                        .iter()
+                        .all(|x| number_mapping[&candidate].contains(x))
+                    {
+                        Some(*candidate)
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<usize>>()];
+
+            for signal in &signals {
+                let possibilities = reverse_mapping.get(&signal).unwrap();
+
+                match possibilities.len() {
+                    1 => {
+                        let candidate = possibilities[0];
+                        for candidate_list in &mut candidates {
+                            *candidate_list = candidate_list
+                                .iter()
+                                .filter(|e| reverse_number_mapping[&candidate].contains(e))
+                                .map(|x| *x)
+                                .collect();
+                        }
+                    }
+                    2 => {
+                        let has_both = possibilities.iter().all(|&possibility| {
+                            mapping[&possibility]
+                                .iter()
+                                .all(|character| signals.contains(character))
+                        });
+
+                        if has_both {
+                            for candidate_list in &mut candidates {
+                                for candidate in possibilities {
+                                    let filtered_list = candidate_list
+                                        .iter()
+                                        .filter_map(|e| {
+                                            if reverse_number_mapping[&candidate].contains(e) {
+                                                Some(*e)
+                                            } else {
+                                                None
+                                            }
+                                        })
+                                        .collect::<Vec<usize>>();
+                                    if filtered_list.len() != 0 {
+                                        *candidate_list = filtered_list;
+                                    }
+                                }
+                            }
+                        } else {
+                            let mut candidates_list = [candidates.clone(), candidates.clone()];
+
+                            for (index, candidate) in possibilities.iter().enumerate() {
+                                for candidate_list in &mut candidates_list[index] {
+                                    let filtered_list = candidate_list
+                                        .iter()
+                                        .filter_map(|e| {
+                                            if reverse_number_mapping[&candidate].contains(e) {
+                                                Some(*e)
+                                            } else {
+                                                None
+                                            }
+                                        })
+                                        .collect::<Vec<usize>>();
+                                    if filtered_list.len() != 0 {
+                                        *candidate_list = filtered_list;
+                                    }
+                                }
+                            }
+                            candidates = candidates_list[0].clone();
+                            candidates.extend(candidates_list[1].clone());
+                        }
+                    }
+                    _ => println!("Something broken"),
                 }
             }
+            candidates = candidates.clone().into_iter().unique().collect();
+            if candidates.len() == 1 && candidates[0].len() == 1 {
+                let single_match = candidates[0][0];
+                deduced_number_mapping.insert(single_match, pattern);
+            }
         }
-        if deduced_number_mapping.len() != 10 {
-            println!("inputs: {:?}", inputs.clone());
-            println!("mapping: {:?}", mapping.clone());
-            println!("reverse_mapping: {:?}", reverse_mapping.clone());
-            println!(
-                "deduced_number_mapping[{}]: {:?}",
-                deduced_number_mapping.len(),
-                deduced_number_mapping
-            );
-        }
-        0
+
+        let reversed_deduced = deduced_number_mapping
+            .iter()
+            .map(|(key, value)| (value.clone(), *key))
+            .collect::<HashMap<String, usize>>();
+        acc + outputs
+            .iter()
+            .map(|raw| char::from_digit(reversed_deduced[raw] as u32, 10).unwrap())
+            .join("")
+            .parse::<usize>()
+            .unwrap()
     })
 }
 fn main() {
