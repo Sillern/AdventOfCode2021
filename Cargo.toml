@@ -2,13 +2,14 @@
 name = "advent_of_code_2021"
 version = "0.1.0"
 authors = ["Sebastian Jegerås <jegeras@gmail.com>"]
+edition = "2021"
 
-edition = "2018"
 [dependencies]
-itertools = "0.10.1"
-regex = "1"
-image = "0.22"
-rand = "0.7.2"
+itertools = "0.10.3"
+regex = "^0"
+image = "^0"
+rand = "^0.7"
+
 
 [dev-dependencies]
 criterion = "0.3"
@@ -40,3 +41,7 @@ path = "day06/day06.rs"
 [[bin]]
 name = "day07"
 path = "day07/day07.rs"
+
+[[bin]]
+name = "day08"
+path = "day08/day08.rs"
