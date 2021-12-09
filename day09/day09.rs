@@ -87,8 +87,6 @@ fn solve_part2(inputfile: String) -> usize {
         })
         .collect::<Vec<(Coordinate, u32)>>();
 
-    println!("lowest points: {:?}", lowest_points);
-
     lowest_points
         .iter()
         .map(|(lowest_point, height)| {
@@ -120,13 +118,6 @@ fn solve_part2(inputfile: String) -> usize {
                 }
             }
 
-            println!(
-                "lowest point: {:?}, basin[{}]: {:?}",
-                lowest_point,
-                visited.len(),
-                visited
-            );
-
             visited.len()
         })
         .sorted()
@@ -135,71 +126,64 @@ fn solve_part2(inputfile: String) -> usize {
         .product()
 }
 
-/*
-
 use image::ImageBuffer;
 type Color = (u8, u8, u8);
 
-fn draw_pixel(pixels: &mut Vec<(Coordinate, Color)>, position: Coordinate, color_index: i32) {
-    let color = match color_index {
-        1 => (166, 145, 80),
-        2 => (177, 157, 94),
-        3 => (186, 168, 111),
-        4 => (194, 178, 128),
-        5 => (202, 188, 145),
-        6 => (211, 199, 162),
-        7 => (219, 209, 180),
-        _ => (219, 209, 180),
+fn draw_pixel(pixels: &mut Vec<(Coordinate, Color)>, position: Coordinate, color_index: usize) {
+    let palette = [
+        (23, 37, 23),
+        (12, 57, 83),
+        (9, 76, 114),
+        (5, 90, 140),
+        (2, 106, 167),
+        (0, 121, 191),
+        (41, 143, 202),
+        (91, 164, 207),
+        (139, 189, 217),
+        (188, 217, 234),
+        (228, 240, 246),
+    ];
+
+    let default_color = palette[0];
+
+    let color = match palette.get(color_index) {
+        Some(valid_color) => *valid_color,
+        None => default_color,
     };
 
     pixels.push((position, color));
 }
 
-fn draw_vent_map(inputfile: String) {
-    let input = parse_input(inputfile);
+fn draw_height_map(inputfile: String) {
+    let height_map = parse_input(inputfile);
 
-    let mut vent_map = HashMap::<Coordinate, i32>::new();
-
-    for (start, stop) in input {
-        if (start.0 == stop.0)
-            || (start.1 == stop.1)
-            || ((start.0 - stop.0).abs() == (start.1 - stop.1).abs())
-        {
-            for coord in CoordinateRange::new(start, stop) {
-                vent_map
-                    .entry(coord)
-                    .and_modify(|e| *e = *e + 1)
-                    .or_insert(1);
-            }
-        }
-    }
-
-    let x_min = vent_map.iter().map(|(pos, _)| pos.0).min().unwrap();
-    let x_max = vent_map.iter().map(|(pos, _)| pos.0).max().unwrap();
-    let y_min = vent_map.iter().map(|(pos, _)| pos.1).min().unwrap();
-    let y_max = vent_map.iter().map(|(pos, _)| pos.1).max().unwrap();
+    let x_min = height_map.iter().map(|(pos, _)| pos.0).min().unwrap();
+    let x_max = height_map.iter().map(|(pos, _)| pos.0).max().unwrap();
+    let y_min = height_map.iter().map(|(pos, _)| pos.1).min().unwrap();
+    let y_max = height_map.iter().map(|(pos, _)| pos.1).max().unwrap();
     let x_range = (x_max - x_min) as u32;
     let y_range = (y_max - y_min) as u32;
     let dimensions: Coordinate = (1 + x_range as i32, 1 + y_range as i32);
 
     let border = 2;
+    let scale = 2;
     let real_size = (
-        ((dimensions.0 + border * 2) as u32),
-        ((dimensions.1 + border * 2) as u32),
+        (scale * (dimensions.0 + border * 2) as u32),
+        (scale * (dimensions.1 + border * 2) as u32),
     );
-
-    let offset = (x_min + border, y_min + border);
 
     let mut pixels = Vec::<(Coordinate, Color)>::new();
 
     for y in 0..y_range {
         for x in 0..x_range {
             let block_pos = (border + x as i32, border + y as i32);
-            let vent_pos = (offset.0 + block_pos.0, offset.1 + block_pos.1);
+            let pos = (x as i32, y as i32);
 
-            match vent_map.get(&vent_pos) {
-                Some(&height) => draw_pixel(&mut pixels, block_pos, height),
-                None => draw_pixel(&mut pixels, block_pos, 0),
+            match height_map.get(&pos) {
+                Some(&height) => draw_pixel(&mut pixels, block_pos, height as usize),
+                None => {
+                    println!("Didn't find {:?}", pos);
+                }
             }
         }
     }
@@ -211,11 +195,14 @@ fn draw_vent_map(inputfile: String) {
     for ((x, y), color) in pixels {
         let pixel = image::Rgb([color.0, color.1, color.2]);
         if x >= 0 && y >= 0 && x < real_size.0 as i32 && y < real_size.1 as i32 {
-            img.put_pixel(x as u32, y as u32, pixel);
+            img.put_pixel(scale * x as u32 + 0, scale * y as u32 + 0, pixel);
+            img.put_pixel(scale * x as u32 + 1, scale * y as u32 + 0, pixel);
+            img.put_pixel(scale * x as u32 + 0, scale * y as u32 + 1, pixel);
+            img.put_pixel(scale * x as u32 + 1, scale * y as u32 + 1, pixel);
         }
     }
 
-    img.save(format!("frames/day05.png")).unwrap();
+    img.save("frames/day09.png".to_string()).unwrap();
 }
 
 fn main() {
@@ -223,38 +210,5 @@ fn main() {
     println!("Part1: {}", solve_part1(args[1].to_string()));
     println!("Part2: {}", solve_part2(args[1].to_string()));
 
-    draw_vent_map(args[1].to_string());
-}
-
-fn solve_part1(inputfile: String) -> usize {
-    let contents =
-        std::fs::read_to_string(inputfile).expect("Something went wrong reading the file");
-
-    let positions = contents
-        .lines()
-        .next()
-        .unwrap()
-        .split(",")
-        .map(|position| position.parse::<usize>().unwrap())
-        .collect::<Vec<usize>>();
-    let max_position = positions.iter().max().unwrap();
-
-    let mut min_fuel_cost = 0;
-    for aligned_position in 0..*max_position {
-        let fuel_cost = positions.iter().fold(0, |total_fuel, position| {
-            total_fuel + (*position as i64 - aligned_position as i64).abs()
-        });
-        if fuel_cost < min_fuel_cost || min_fuel_cost == 0 {
-            min_fuel_cost = fuel_cost;
-        }
-    }
-
-    min_fuel_cost as usize
-}
-*/
-
-fn main() {
-    let args: Vec<String> = env::args().collect();
-    println!("Part1: {}", solve_part1(args[1].to_string()));
-    println!("Part2: {}", solve_part2(args[1].to_string()));
+    draw_height_map(args[1].to_string());
 }
