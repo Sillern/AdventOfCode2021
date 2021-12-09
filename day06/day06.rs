@@ -14,7 +14,7 @@ fn solve_part1(inputfile: String) -> usize {
         .map(|cycletime| cycletime.parse::<usize>().unwrap())
         .collect::<Vec<usize>>();
 
-    for day in 0..80 {
+    for _ in 0..80 {
         let new_fishes = fishes
             .iter_mut()
             .filter_map(|cycle_time| {
@@ -49,13 +49,13 @@ fn solve_part2(inputfile: String) -> usize {
         .map(|(num_fish, cycle_time)| (cycle_time, num_fish))
         .collect::<HashMap<usize, usize>>();
 
-    for day in (0..256) {
+    for _ in 0..256 {
         let new_fish = match fish_buckets.get(&0) {
             Some(&count) => count,
             None => 0,
         };
 
-        for cycle_time in (0..8) {
+        for cycle_time in 0..8 {
             let next_fish_count = match fish_buckets.get(&(cycle_time + 1)) {
                 Some(&count) => count,
                 None => 0,

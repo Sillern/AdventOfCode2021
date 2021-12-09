@@ -1,4 +1,3 @@
-use itertools::Itertools;
 use std::env;
 use std::i64;
 
@@ -46,15 +45,6 @@ fn solve_part1(inputfile: String) -> usize {
 fn solve_part2(inputfile: String) -> usize {
     let contents =
         std::fs::read_to_string(inputfile).expect("Something went wrong reading the file");
-
-    let list_of_bits = contents
-        .lines()
-        .map(|line| {
-            line.chars()
-                .map(|c| c.to_digit(10).unwrap())
-                .collect::<Vec<u32>>()
-        })
-        .collect::<Vec<Vec<u32>>>();
 
     let mut oxygen_generator_rating = contents.lines().collect::<Vec<&str>>();
     let mut split_index = 0;

@@ -51,11 +51,7 @@ impl Board {
             return None;
         }
 
-        match self
-            .numbers
-            .iter()
-            .position(|&(value, marked)| number == value)
-        {
+        match self.numbers.iter().position(|&(value, _)| number == value) {
             Some(index) => {
                 self.numbers[index] = (number, true);
                 if self.has_winning_criteria() {
