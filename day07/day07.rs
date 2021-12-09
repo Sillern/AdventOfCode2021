@@ -8,7 +8,7 @@ fn solve_part1(inputfile: String) -> usize {
         .lines()
         .next()
         .unwrap()
-        .split(",")
+        .split(',')
         .map(|position| position.parse::<usize>().unwrap())
         .collect::<Vec<usize>>();
     let max_position = positions.iter().max().unwrap();
@@ -34,7 +34,7 @@ fn solve_part2(inputfile: String) -> usize {
         .lines()
         .next()
         .unwrap()
-        .split(",")
+        .split(',')
         .map(|position| position.parse::<usize>().unwrap())
         .collect::<Vec<usize>>();
     let max_position = positions.iter().max().unwrap();

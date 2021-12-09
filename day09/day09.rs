@@ -1,4 +1,3 @@
-use image::ImageBuffer;
 use itertools::Itertools;
 use std::collections::HashMap;
 use std::env;
@@ -60,7 +59,7 @@ fn solve_part1(inputfile: String) -> usize {
     height_map.iter().fold(0, |acc, (position, height)| {
         let is_lowest =
             AdjacentRange::new(*position).all(|neighbour| match height_map.get(&neighbour) {
-                Some(neighbour_height) => neighbour_height > &height,
+                Some(neighbour_height) => neighbour_height > height,
                 None => true,
             });
 
@@ -76,7 +75,7 @@ fn solve_part2(inputfile: String) -> usize {
         .filter_map(|(position, height)| {
             let is_lowest =
                 AdjacentRange::new(*position).all(|neighbour| match height_map.get(&neighbour) {
-                    Some(neighbour_height) => neighbour_height > &height,
+                    Some(neighbour_height) => neighbour_height > height,
                     None => true,
                 });
 
@@ -96,7 +95,7 @@ fn solve_part2(inputfile: String) -> usize {
             let mut queue = vec![*lowest_point];
             let mut visited: Vec<Coordinate> = vec![];
 
-            while queue.len() != 0 {
+            while !queue.is_empty() {
                 match queue.pop() {
                     Some(position) => {
                         if !visited.contains(&position) {
@@ -105,10 +104,11 @@ fn solve_part2(inputfile: String) -> usize {
                             for neighbour in AdjacentRange::new(position) {
                                 match height_map.get(&neighbour) {
                                     Some(neighbour_height) => {
-                                        if *neighbour_height > *height && *neighbour_height != 9 {
-                                            if !visited.contains(&neighbour) {
-                                                queue.push(neighbour);
-                                            }
+                                        if *neighbour_height > *height
+                                            && *neighbour_height != 9
+                                            && !visited.contains(&neighbour)
+                                        {
+                                            queue.push(neighbour);
                                         }
                                     }
                                     None => (),
@@ -132,11 +132,12 @@ fn solve_part2(inputfile: String) -> usize {
         .sorted()
         .rev()
         .take(3)
-        .fold(1, |product, basin_size| product * basin_size)
+        .product()
 }
 
 /*
 
+use image::ImageBuffer;
 type Color = (u8, u8, u8);
 
 fn draw_pixel(pixels: &mut Vec<(Coordinate, Color)>, position: Coordinate, color_index: i32) {

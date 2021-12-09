@@ -65,7 +65,7 @@ fn parse_input(inputfile: String) -> Vec<(Coordinate, Coordinate)> {
             let (start, stop) = line
                 .split(" -> ")
                 .map(|pos| {
-                    pos.split(",")
+                    pos.split(',')
                         .map(|value| value.parse::<i32>().unwrap())
                         .tuples()
                         .next()
@@ -90,7 +90,7 @@ fn solve_part1(inputfile: String) -> usize {
             for coord in CoordinateRange::new(start, stop) {
                 vent_map
                     .entry(coord)
-                    .and_modify(|e| *e = *e + 1)
+                    .and_modify(|e| *e += 1)
                     .or_insert(1);
             }
         }
@@ -114,7 +114,7 @@ fn solve_part2(inputfile: String) -> usize {
             for coord in CoordinateRange::new(start, stop) {
                 vent_map
                     .entry(coord)
-                    .and_modify(|e| *e = *e + 1)
+                    .and_modify(|e| *e += 1)
                     .or_insert(1);
             }
         } else {
@@ -161,7 +161,7 @@ fn draw_vent_map(inputfile: String) {
             for coord in CoordinateRange::new(start, stop) {
                 vent_map
                     .entry(coord)
-                    .and_modify(|e| *e = *e + 1)
+                    .and_modify(|e| *e += 1)
                     .or_insert(1);
             }
         }
@@ -208,7 +208,7 @@ fn draw_vent_map(inputfile: String) {
         }
     }
 
-    img.save(format!("frames/day05.png")).unwrap();
+    img.save("frames/day05.png".to_string()).unwrap();
 }
 
 fn main() {

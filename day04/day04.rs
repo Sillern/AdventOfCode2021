@@ -20,7 +20,7 @@ impl fmt::Display for Board {
                 .map(|row| {
                     row.map(|(number, marked)| {
                         if *marked {
-                            format!("{}", " * ")
+                            " * ".to_string()
                         } else {
                             format!("{:<3}", number)
                         }
@@ -37,10 +37,7 @@ impl Board {
         Self {
             numbers: numbers
                 .split(&['\n', ' '][..])
-                .filter_map(|maybe_number| match maybe_number.parse::<u32>().ok() {
-                    Some(number) => Some((number, false)),
-                    None => None,
-                })
+                .filter_map(|maybe_number| maybe_number.parse::<u32>().ok().map(|number| (number, false)))
                 .collect::<Vec<(u32, bool)>>(),
             valid_score: 0,
         }
@@ -105,17 +102,16 @@ fn solve_part1(inputfile: String) -> usize {
         std::fs::read_to_string(inputfile).expect("Something went wrong reading the file");
 
     let drawn_numbers = contents
-        .lines()
-        .nth(0)
+        .lines().next()
         .unwrap()
-        .split(",")
+        .split(',')
         .map(|number| number.parse::<u32>().unwrap())
         .collect::<Vec<u32>>();
 
     let mut boards = contents
         .split("\n\n")
         .skip(1)
-        .map(|board| Board::new(board))
+        .map(Board::new)
         .collect::<Vec<Board>>();
 
     let winning_score = drawn_numbers
@@ -136,17 +132,16 @@ fn solve_part2(inputfile: String) -> usize {
         std::fs::read_to_string(inputfile).expect("Something went wrong reading the file");
 
     let drawn_numbers = contents
-        .lines()
-        .nth(0)
+        .lines().next()
         .unwrap()
-        .split(",")
+        .split(',')
         .map(|number| number.parse::<u32>().unwrap())
         .collect::<Vec<u32>>();
 
     let mut boards = contents
         .split("\n\n")
         .skip(1)
-        .map(|board| Board::new(board))
+        .map(Board::new)
         .collect::<Vec<Board>>();
 
     let winning_scores = drawn_numbers

@@ -10,7 +10,7 @@ fn solve_part1(inputfile: String) -> usize {
         .lines()
         .next()
         .unwrap()
-        .split(",")
+        .split(',')
         .map(|cycletime| cycletime.parse::<usize>().unwrap())
         .collect::<Vec<usize>>();
 
@@ -41,7 +41,7 @@ fn solve_part2(inputfile: String) -> usize {
         .lines()
         .next()
         .unwrap()
-        .split(",")
+        .split(',')
         .map(|cycletime| cycletime.parse::<usize>().unwrap())
         .sorted()
         .into_iter()
@@ -77,7 +77,7 @@ fn solve_part2(inputfile: String) -> usize {
             .or_insert(0);
     }
 
-    fish_buckets.values().fold(0, |acc, bucket| acc + bucket)
+    fish_buckets.values().sum()
 }
 
 fn main() {

@@ -12,7 +12,7 @@ fn solve_part1(inputfile: String) -> usize {
             .split(" | ")
             .nth(1)
             .unwrap()
-            .split(" ")
+            .split(' ')
             .filter_map(|output| match output.len() {
                 2 => Some(1),
                 3 => Some(1),
@@ -95,7 +95,7 @@ fn solve_part2(inputfile: String) -> usize {
         let mut mapping = full_mapping.clone();
         let decoded = line
             .split(" | ")
-            .map(|signals| signals.split(" ").collect::<Vec<&str>>())
+            .map(|signals| signals.split(' ').collect::<Vec<&str>>())
             .collect::<Vec<Vec<&str>>>();
 
         let inputs = decoded.iter().nth(0).unwrap();
@@ -123,8 +123,7 @@ fn solve_part2(inputfile: String) -> usize {
                     for (key, possibilities) in mapping.iter_mut() {
                         let filtered_possibilities: Vec<char> = possibilities
                             .iter()
-                            .filter(|signal| !signals.contains(signal))
-                            .map(|x| *x)
+                            .filter(|signal| !signals.contains(signal)).copied()
                             .collect();
 
                         *possibilities = match *key {
@@ -139,8 +138,7 @@ fn solve_part2(inputfile: String) -> usize {
                     for (key, possibilities) in mapping.iter_mut() {
                         let filtered_possibilities: Vec<char> = possibilities
                             .iter()
-                            .filter(|signal| !signals.contains(signal))
-                            .map(|x| *x)
+                            .filter(|signal| !signals.contains(signal)).copied()
                             .collect();
 
                         *possibilities = match *key {
@@ -156,8 +154,7 @@ fn solve_part2(inputfile: String) -> usize {
                     for (key, possibilities) in mapping.iter_mut() {
                         let filtered_possibilities: Vec<char> = possibilities
                             .iter()
-                            .filter(|signal| !signals.contains(signal))
-                            .map(|x| *x)
+                            .filter(|signal| !signals.contains(signal)).copied()
                             .collect();
 
                         *possibilities = match *key {
@@ -174,8 +171,7 @@ fn solve_part2(inputfile: String) -> usize {
                         mapping.entry(place).and_modify(|possibilities| {
                             *possibilities = possibilities
                                 .iter()
-                                .filter(|signal| signals.contains(signal))
-                                .map(|x| *x)
+                                .filter(|signal| signals.contains(signal)).copied()
                                 .collect::<Vec<char>>()
                         });
                     }
@@ -185,8 +181,7 @@ fn solve_part2(inputfile: String) -> usize {
                         mapping.entry(place).and_modify(|possibilities| {
                             *possibilities = possibilities
                                 .iter()
-                                .filter(|signal| signals.contains(signal))
-                                .map(|x| *x)
+                                .filter(|signal| signals.contains(signal)).copied()
                                 .collect::<Vec<char>>()
                         });
                     }
@@ -213,8 +208,7 @@ fn solve_part2(inputfile: String) -> usize {
                 {
                     let filtered_possibilities = possibilities
                         .iter()
-                        .filter(|signal| &&possibility != signal)
-                        .map(|x| *x)
+                        .filter(|signal| &&possibility != signal).copied()
                         .collect::<Vec<char>>();
 
                     *possibilities = filtered_possibilities;
@@ -232,7 +226,7 @@ fn solve_part2(inputfile: String) -> usize {
             }
         }
 
-        for pattern in sorted_inputs.clone() {
+        for pattern in sorted_inputs {
             if deduced_number_mapping.values().contains(&&pattern) {
                 continue;
             }
@@ -244,12 +238,12 @@ fn solve_part2(inputfile: String) -> usize {
                 .filter_map(|candidate| {
                     if !deduced_number_mapping.keys().contains(candidate) {
                         let has_invalid_tiles =
-                            number_mapping[&candidate].iter().fold(0, |acc, number| {
-                                if mapping[&number].len() != 1 {
+                            number_mapping[candidate].iter().fold(0, |acc, number| {
+                                if mapping[number].len() != 1 {
                                     return acc;
                                 }
 
-                                acc + mapping[&number].iter().fold(
+                                acc + mapping[number].iter().fold(
                                     0,
                                     |inner_acc, required_character| {
                                         inner_acc
@@ -291,7 +285,7 @@ fn solve_part2(inputfile: String) -> usize {
                     _ => println!("Something broken"),
                 };
             }
-            required.sort();
+            required.sort_unstable();
             required.dedup();
 
             let mut candidates = vec![first_candidates
@@ -299,7 +293,7 @@ fn solve_part2(inputfile: String) -> usize {
                 .filter_map(|candidate| {
                     if required
                         .iter()
-                        .all(|x| number_mapping[&candidate].contains(x))
+                        .all(|x| number_mapping[candidate].contains(x))
                     {
                         Some(*candidate)
                     } else {
@@ -317,8 +311,7 @@ fn solve_part2(inputfile: String) -> usize {
                         for candidate_list in &mut candidates {
                             *candidate_list = candidate_list
                                 .iter()
-                                .filter(|e| reverse_number_mapping[&candidate].contains(e))
-                                .map(|x| *x)
+                                .filter(|e| reverse_number_mapping[&candidate].contains(e)).copied()
                                 .collect();
                         }
                     }
@@ -342,7 +335,7 @@ fn solve_part2(inputfile: String) -> usize {
                                             }
                                         })
                                         .collect::<Vec<usize>>();
-                                    if filtered_list.len() != 0 {
+                                    if !filtered_list.is_empty() {
                                         *candidate_list = filtered_list;
                                     }
                                 }
@@ -362,7 +355,7 @@ fn solve_part2(inputfile: String) -> usize {
                                             }
                                         })
                                         .collect::<Vec<usize>>();
-                                    if filtered_list.len() != 0 {
+                                    if !filtered_list.is_empty() {
                                         *candidate_list = filtered_list;
                                     }
                                 }
