@@ -3,5 +3,5 @@ target
 *.png
 *.yuv
 *.webm
+*.mp4
 /frames/
-

@@ -1,4 +1,5 @@
 use rand::seq::SliceRandom;
+use rand::{thread_rng, Rng};
 
 use std::collections::HashMap;
 use std::env;
@@ -239,12 +240,19 @@ fn draw_large_image(width: u32, height: u32) {
 
     let mut frame = 0;
     draw_image(&grid, frame);
-    for _ in 0..100 {
+    for _ in 0..1000 {
         println!("frame[{}]", frame);
         frame += 1;
 
         grid.iter_mut().for_each(|(_, energy_level)| {
             *energy_level += 1;
+            if rng.gen_bool(1.0 / 3.0) {
+                if rng.gen_bool(1.0 / 3.0) {
+                    *energy_level += 1;
+                } else {
+                    *energy_level -= 1;
+                }
+            }
         });
 
         flash(&mut grid);
@@ -258,5 +266,5 @@ fn main() {
     println!("Part1: {}", solve_part1(args[1].to_string()));
     println!("Part2: {}", solve_part2(args[1].to_string()));
 
-    draw_large_image(100, 100);
+    draw_large_image(240, 240);
 }
