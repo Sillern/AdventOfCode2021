@@ -45,7 +45,7 @@ fn draw_image(image_data: &HashMap<Coordinate, u32>, frame: u32) {
     let dimensions: Coordinate = (x_range as i32, y_range as i32);
 
     let border = 2;
-    let scale = 4;
+    let scale = 1;
     let real_size = (
         (scale * (dimensions.0 + border * 2) as u32),
         (scale * (dimensions.1 + border * 2) as u32),
@@ -123,43 +123,28 @@ fn parse_input(inputfile: String) -> (Vec<Coordinate>, Vec<OptionalCoordinate>) 
 }
 
 fn fold_paper(paper: &Vec<Coordinate>, axis: &OptionalCoordinate) -> Vec<Coordinate> {
-    if let Some(fold_x) = axis.0 {
-        println!("x: {:?}", fold_x);
-        paper
-            .iter()
-            .map(|&(x, y)| {
+    paper
+        .iter()
+        .map(|&(x, y)| {
+            if let Some(fold_x) = axis.0 {
                 if x > fold_x {
                     (fold_x - (x - fold_x), y)
                 } else {
                     (x, y)
                 }
-            })
-            .sorted()
-            .unique()
-            .collect()
-    } else if let Some(fold_y) = axis.1 {
-        println!("y: {:?}", fold_y);
-        paper
-            .iter()
-            .map(|&(x, y)| {
+            } else if let Some(fold_y) = axis.1 {
                 if y > fold_y {
-                    println!(
-                        "new {:?} -> {:?}, diff: {:?}",
-                        (x, y),
-                        (x, fold_y - (y - fold_y)),
-                        (y - fold_y)
-                    );
                     (x, fold_y - (y - fold_y))
                 } else {
                     (x, y)
                 }
-            })
-            .sorted()
-            .unique()
-            .collect()
-    } else {
-        panic!()
-    }
+            } else {
+                panic!();
+            }
+        })
+        .sorted()
+        .unique()
+        .collect()
 }
 
 fn solve_part1(inputfile: String) -> usize {
@@ -179,10 +164,6 @@ fn solve_part2(inputfile: String) -> usize {
     let (mut coordinates, fold_along) = parse_input(inputfile);
     let mut frame = 0;
 
-    println!(
-        "coordinates: {:?}, fold_along: {:?}",
-        coordinates, fold_along
-    );
     draw_image(
         &coordinates
             .iter()
@@ -202,10 +183,6 @@ fn solve_part2(inputfile: String) -> usize {
             frame,
         );
         frame += 1;
-        println!(
-            "coordinates: {:?}, fold_along: {:?}",
-            coordinates, fold_along
-        );
     }
 
     0
