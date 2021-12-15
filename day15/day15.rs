@@ -288,19 +288,15 @@ fn get_shortest_path(map: &HashMap<Coordinate, u32>, start: Coordinate) -> u32 {
                         lowest_cost = priority;
                         println!("found better path {}", priority);
                     }
-                    let mut path = vec![end];
-                    while path.last().unwrap() != &start {
-                        path.push(*came_from.get(path.last().unwrap()).unwrap());
-                    }
-                    let risk_level = path.iter().fold(0, |acc, position| {
-                        acc + match map.get(&position) {
-                            Some(risk_level) => *risk_level,
-                            None => 0,
-                        }
-                    });
-                    frame += 1;
 
-                    draw_image(map, &path, frame);
+                    {
+                        frame += 1;
+                        let mut path = vec![position];
+                        while path.last().unwrap() != &start {
+                            path.push(*came_from.get(path.last().unwrap()).unwrap());
+                        }
+                        draw_image(map, &path, frame);
+                    }
                 }
 
                 for neighbour in AdjacentRange::new(position) {
@@ -371,7 +367,6 @@ fn get_shortest_path_all_tiles(
     while !queue.is_empty() {
         queue.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
 
-        println!("queuelength: {}", queue.len());
         match queue.pop() {
             Some((position, priority)) => {
                 if position == end {
@@ -380,21 +375,14 @@ fn get_shortest_path_all_tiles(
                         lowest_cost = priority;
                         println!("found better path {}", priority);
                     }
-                    let mut path = vec![end];
-                    while path.last().unwrap() != &start {
-                        path.push(*came_from.get(path.last().unwrap()).unwrap());
-                    }
-                    let risk_level = path.iter().fold(0, |acc, pos| {
-                        let wrapped_position = get_wrapped_position(&pos, &tile_size);
-
-                        acc + match map.get(&wrapped_position) {
-                            Some(risk_level) => get_cost(risk_level, &pos, &tile_size),
-
-                            None => 0,
+                    {
+                        let mut path = vec![position];
+                        while path.last().unwrap() != &start {
+                            path.push(*came_from.get(path.last().unwrap()).unwrap());
                         }
-                    });
-                    frame += 1;
-                    draw_image_all_tiles(map, &path, &tiles, frame);
+                        frame += 1;
+                        draw_image_all_tiles(map, &path, &tiles, frame);
+                    }
                 }
 
                 let wrapped_position = get_wrapped_position(&position, &tile_size);
@@ -461,6 +449,6 @@ fn solve_part2(inputfile: String) -> u32 {
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    // println!("Part1: {}", solve_part1(args[1].to_string()));
+    println!("Part1: {}", solve_part1(args[1].to_string()));
     println!("Part2: {}", solve_part2(args[1].to_string()));
 }
