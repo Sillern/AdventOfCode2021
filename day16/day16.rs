@@ -6,40 +6,92 @@ use std::env;
 struct Packet {
     version: u8, // 3 bits
     type_id: u8, // 3 bits
-    literal: Option<Vec<u8>>,
-    subpackets: Option<Vec<Packet>>,
+    literals: Vec<u8>,
+    subpackets: Vec<Packet>,
 }
+
 impl Packet {
     pub fn new(version: u32, type_id: u32) -> Self {
         Self {
             version: version as u8,
             type_id: type_id as u8,
-            literal: None,
-            subpackets: None,
+            literals: vec![],
+            subpackets: vec![],
         }
     }
 
+    pub fn get_literal(&self) -> u64 {
+        assert!(self.literals.len() < 16);
+        self.literals
+            .iter()
+            .rev()
+            .enumerate()
+            .fold(0, |acc, (index, halfbyte)| {
+                acc + ((*halfbyte as u64) << (index * 4))
+            })
+    }
+
     pub fn add_subpacket(&mut self, subpacket: Packet) {
-        match &mut self.subpackets {
-            Some(subpackets) => subpackets.push(subpacket),
-            None => self.subpackets = Some(vec![subpacket]),
-        }
+        self.subpackets.push(subpacket)
+    }
+
+    pub fn add_literal(&mut self, literal: u8) {
+        self.literals.push(literal)
     }
 
     pub fn get_version_sum(&self) -> usize {
         self.version as usize
-            + match &self.subpackets {
-                Some(subpackets) => subpackets
+            + self
+                .subpackets
+                .iter()
+                .fold(0, |acc, packet| acc + packet.get_version_sum())
+    }
+
+    pub fn execute(&self) -> u64 {
+        println!("executing: {:?}", self);
+        match self.type_id {
+            0 => {
+                // sum
+                self.subpackets
                     .iter()
-                    .fold(0, |acc, packet| acc + packet.get_version_sum()),
-                None => 0,
+                    .fold(0, |acc, packet| acc + packet.execute())
             }
+            1 => {
+                // product
+                panic!()
+            }
+            2 => {
+                // minimum
+                panic!()
+            }
+            3 => {
+                // maximum
+                panic!()
+            }
+            4 => {
+                // literal
+                self.get_literal()
+            }
+            5 => {
+                // greater than
+                panic!()
+            }
+            6 => {
+                // less than
+                panic!()
+            }
+            7 => {
+                // equal
+                panic!()
+            }
+            _ => {
+                panic!()
+            }
+        }
     }
 }
 
-fn parse_input(inputfile: String) -> Vec<Packet> {
-    let mut packets: Vec<Packet> = vec![];
-
+fn parse_string(input: &str) -> Vec<Packet> {
     let conversion: HashMap<char, &str> = HashMap::from([
         ('0', "0000"),
         ('1', "0001"),
@@ -70,7 +122,6 @@ fn parse_input(inputfile: String) -> Vec<Packet> {
         let type_id = bits_to_int(it, 3);
 
         let mut packet = Packet::new(version, type_id);
-        let mut values: Vec<u32> = vec![];
         match type_id {
             4 => {
                 // Literal value
@@ -83,9 +134,7 @@ fn parse_input(inputfile: String) -> Vec<Packet> {
                         None => panic!(),
                     };
 
-                    let value = bits_to_int(it, 4);
-
-                    values.push(value)
+                    packet.add_literal(bits_to_int(it, 4) as u8);
                 }
                 Some(packet)
             }
@@ -116,29 +165,33 @@ fn parse_input(inputfile: String) -> Vec<Packet> {
         }
     }
 
-    let packets = std::fs::read_to_string(inputfile)
-        .expect("Something went wrong reading the file")
-        .lines()
-        .map(|line| line.chars().map(|c| conversion.get(&c).unwrap()).join(""))
-        .collect::<String>()
+    input
+        .chars()
+        .map(|c| conversion.get(&c).unwrap())
+        .join("")
         .chars()
         .batching(|it| {
             let chars_left = it.clone().count();
-            println!("chars_left: {:?}", chars_left);
             if chars_left > 0 {
                 parse_packet(it)
             } else {
                 None
             }
         })
-        .collect::<Vec<Packet>>();
+        .collect::<Vec<Packet>>()
+}
 
-    packets
+fn parse_input(inputfile: String) -> Vec<Packet> {
+    std::fs::read_to_string(inputfile)
+        .expect("Something went wrong reading the file")
+        .lines()
+        .map(|line| parse_string(line))
+        .flatten()
+        .collect::<Vec<Packet>>()
 }
 
 fn solve_part1(inputfile: String) -> usize {
     let parsed = parse_input(inputfile);
-    //    println!("parsed: {:?}", parsed);
 
     parsed
         .iter()
@@ -147,15 +200,89 @@ fn solve_part1(inputfile: String) -> usize {
 
 fn solve_part2(inputfile: String) -> usize {
     let parsed = parse_input(inputfile);
-    //    println!("parsed: {:?}", parsed);
 
-    parsed
-        .iter()
-        .fold(0, |acc, packet| acc + packet.get_version_sum())
+    parsed.iter().for_each(|packet| {
+        println!("packet: {:?}", packet.execute());
+    });
+    0
 }
 
 fn main() {
     let args: Vec<String> = env::args().collect();
     println!("Part1: {}", solve_part1(args[1].to_string()));
     println!("Part2: {}", solve_part2(args[1].to_string()));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_version_sum() {
+        let packets = parse_string("A0016C880162017C3686B18A3D4780");
+        assert_eq!(packets.len(), 1);
+        assert_eq!(packets[0].get_version_sum(), 31);
+    }
+
+    #[test]
+    fn test_literal_value() {
+        let packets = parse_string("D2FE28");
+        assert_eq!(packets.len(), 1);
+        assert_eq!(packets[0].get_literal(), 2021);
+    }
+
+    #[test]
+    fn test_sum() {
+        let packets = parse_string("C200B40A82");
+        assert_eq!(packets.len(), 1);
+        assert_eq!(packets[0].execute(), 3);
+    }
+
+    #[test]
+    fn test_product() {
+        let packets = parse_string("04005AC33890");
+        assert_eq!(packets.len(), 1);
+        assert_eq!(packets[0].execute(), 54);
+    }
+
+    #[test]
+    fn test_minimum() {
+        let packets = parse_string("880086C3E88112");
+        assert_eq!(packets.len(), 1);
+        assert_eq!(packets[0].execute(), 7);
+    }
+
+    #[test]
+    fn test_maximum() {
+        let packets = parse_string("CE00C43D881120");
+        assert_eq!(packets.len(), 1);
+        assert_eq!(packets[0].execute(), 9);
+    }
+
+    #[test]
+    fn test_less_than() {
+        let packets = parse_string("D8005AC2A8F0");
+        assert_eq!(packets.len(), 1);
+        assert_eq!(packets[0].execute(), 1);
+    }
+
+    #[test]
+    fn test_greater_than() {
+        let packets = parse_string("F600BC2D8F");
+        assert_eq!(packets.len(), 1);
+        assert_eq!(packets[0].execute(), 54);
+    }
+
+    #[test]
+    fn test_equality() {
+        let packets = parse_string("9C005AC2F8F0");
+        assert_eq!(packets.len(), 1);
+        assert_eq!(packets[0].execute(), 0);
+    }
+
+    #[test]
+    fn test_composed_equality() {
+        let packets = parse_string("9C0141080250320F1802104A08");
+        assert_eq!(packets.len(), 1);
+        assert_eq!(packets[0].execute(), 1);
+    }
 }
