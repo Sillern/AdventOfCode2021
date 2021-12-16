@@ -48,7 +48,6 @@ impl Packet {
     }
 
     pub fn execute(&self) -> u64 {
-        println!("executing: {:?}", self);
         match self.type_id {
             0 => {
                 // sum
@@ -58,15 +57,25 @@ impl Packet {
             }
             1 => {
                 // product
-                panic!()
+                self.subpackets
+                    .iter()
+                    .fold(1, |acc, packet| acc * packet.execute())
             }
             2 => {
                 // minimum
-                panic!()
+                self.subpackets
+                    .iter()
+                    .map(|packet| packet.execute())
+                    .min()
+                    .unwrap()
             }
             3 => {
                 // maximum
-                panic!()
+                self.subpackets
+                    .iter()
+                    .map(|packet| packet.execute())
+                    .max()
+                    .unwrap()
             }
             4 => {
                 // literal
@@ -74,15 +83,37 @@ impl Packet {
             }
             5 => {
                 // greater than
-                panic!()
+                assert!(self.subpackets.len() == 2);
+
+                let a = self.subpackets[0].execute();
+                let b = self.subpackets[1].execute();
+                if a > b {
+                    1
+                } else {
+                    0
+                }
             }
             6 => {
                 // less than
-                panic!()
+                assert!(self.subpackets.len() == 2);
+                let a = self.subpackets[0].execute();
+                let b = self.subpackets[1].execute();
+                if a < b {
+                    1
+                } else {
+                    0
+                }
             }
             7 => {
                 // equal
-                panic!()
+                assert!(self.subpackets.len() == 2);
+                let a = self.subpackets[0].execute();
+                let b = self.subpackets[1].execute();
+                if a == b {
+                    1
+                } else {
+                    0
+                }
             }
             _ => {
                 panic!()
@@ -146,7 +177,10 @@ fn parse_string(input: &str) -> Vec<Packet> {
                         if static_length {
                             let length = bits_to_int(it, 15);
                             if length > 0 {
-                                packet.add_subpacket(parse_packet(it).unwrap());
+                                let subpacket_stream = &mut it.take(length as usize);
+                                while let Some(subpacket) = parse_packet(subpacket_stream) {
+                                    packet.add_subpacket(subpacket);
+                                }
                                 Some(packet)
                             } else {
                                 None
@@ -201,10 +235,7 @@ fn solve_part1(inputfile: String) -> usize {
 fn solve_part2(inputfile: String) -> usize {
     let parsed = parse_input(inputfile);
 
-    parsed.iter().for_each(|packet| {
-        println!("packet: {:?}", packet.execute());
-    });
-    0
+    parsed[0].execute() as usize
 }
 
 fn main() {
@@ -240,6 +271,11 @@ mod tests {
     #[test]
     fn test_product() {
         let packets = parse_string("04005AC33890");
+        println!("product test: {:?}: {}", packets, packets.len());
+        for packet in &packets {
+            println!("packet: {:?}", packet);
+        }
+
         assert_eq!(packets.len(), 1);
         assert_eq!(packets[0].execute(), 54);
     }
@@ -269,7 +305,7 @@ mod tests {
     fn test_greater_than() {
         let packets = parse_string("F600BC2D8F");
         assert_eq!(packets.len(), 1);
-        assert_eq!(packets[0].execute(), 54);
+        assert_eq!(packets[0].execute(), 0);
     }
 
     #[test]
