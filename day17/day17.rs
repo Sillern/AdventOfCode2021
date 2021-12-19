@@ -52,6 +52,7 @@ struct Trajectory {
     position: Coordinate,
     velocity: Vector,
     max_position: Coordinate,
+    min_position: Coordinate,
 }
 
 impl Trajectory {
@@ -60,6 +61,7 @@ impl Trajectory {
             position,
             velocity,
             max_position: (0, 0),
+            min_position: (0, 0),
         }
     }
 
@@ -70,8 +72,13 @@ impl Trajectory {
             self.velocity.0 -= 1;
         }
         self.velocity.1 -= 1;
+
         if self.position.1 > self.max_position.1 {
             self.max_position = self.position;
+        }
+
+        if self.position.1 < self.min_position.1 {
+            self.min_position = self.position;
         }
     }
 }
@@ -83,7 +90,7 @@ struct TrajectoryRange<'b> {
 }
 
 impl<'b> TrajectoryRange<'b> {
-    fn new(trajectory: Trajectory, target: &'b Target) -> Self {
+    fn new(trajectory: &Trajectory, target: &'b Target) -> Self {
         Self {
             start: trajectory.clone(),
             current: trajectory.clone(),
@@ -113,7 +120,7 @@ fn solve_part1() -> i32 {
         for y_vel in target.y_min()..(-1 * target.y_min()) {
             let trajectory = Trajectory::new((0, 0), (x_vel, y_vel));
 
-            if let Some(result) = TrajectoryRange::new(trajectory, &target)
+            if let Some(result) = TrajectoryRange::new(&trajectory, &target)
                 .filter(|p| target.hit_target(p.position))
                 .max_by(|a, b| a.max_position.1.cmp(&b.max_position.1))
             {
@@ -128,14 +135,13 @@ fn solve_part1() -> i32 {
 
 fn solve_part2() -> i32 {
     let target = Target::new("target area: x=25..67, y=-260..-200");
-    //let target = Target::new("target area: x=20..30, y=-10..-5");
 
     let mut num_valid = 0;
     for x_vel in 1..target.x_max() {
         for y_vel in target.y_min()..(-1 * target.y_min()) {
             let trajectory = Trajectory::new((0, 0), (x_vel, y_vel));
 
-            num_valid += if TrajectoryRange::new(trajectory, &target)
+            num_valid += if TrajectoryRange::new(&trajectory, &target)
                 .any(|p| target.hit_target(p.position))
             {
                 1
@@ -147,9 +153,163 @@ fn solve_part2() -> i32 {
     num_valid
 }
 
+use image::ImageBuffer;
+type Color = (u8, u8, u8);
+
+fn draw_pixel(
+    pixels: &mut Vec<(Coordinate, Color)>,
+    position: Coordinate,
+    block_size: i32,
+    color_index: usize,
+) {
+    let palette = [
+        (23, 37, 23),
+        (12, 57, 83),
+        (9, 76, 114),
+        (5, 90, 140),
+        (2, 106, 167),
+        (0, 121, 191),
+        (41, 143, 202),
+        (91, 164, 207),
+        (139, 189, 217),
+        (188, 217, 234),
+        (228, 240, 246),
+        (228, 90, 120),
+    ];
+
+    let default_color = palette[0];
+
+    let color = match palette.get(color_index) {
+        Some(valid_color) => *valid_color,
+        None => default_color,
+    };
+
+    for offset_y in 0..block_size {
+        for offset_x in 0..block_size {
+            pixels.push((
+                (
+                    (block_size * position.0 + offset_x),
+                    (block_size * position.1 + offset_y),
+                ),
+                color,
+            ));
+        }
+    }
+}
+
+fn draw_image(
+    startpoint: &Coordinate,
+    target: &Target,
+    trajectories: &Vec<Trajectory>,
+    y_limits: (i32, i32),
+    frame: u32,
+) {
+    let x_min = 0;
+    let x_max = target.x_max();
+    let y_min = y_limits.0;
+    let y_max = y_limits.1;
+    let x_range = (1 + x_max - x_min);
+    let y_range = (1 + y_max - y_min);
+    let dimensions: Coordinate = (x_range, y_range);
+
+    let border = 4;
+    let block_size: i32 = 1;
+    let scale = 4;
+    let virtual_size = (
+        (block_size * (dimensions.0 + border * 2)),
+        (block_size * (dimensions.1 + border * 2)),
+    );
+    let real_size = ((scale * virtual_size.0), (scale * virtual_size.1));
+
+    // Translate value to a color from a palette
+    let mut pixels = Vec::<(Coordinate, Color)>::new();
+
+    draw_pixel(&mut pixels, *startpoint, block_size, 0);
+
+    for y in target.y_range.clone() {
+        for x in target.x_range.clone() {
+            draw_pixel(&mut pixels, (x, y), block_size, 10);
+        }
+    }
+
+    for (index, trajectory) in trajectories.iter().enumerate() {
+        for current in TrajectoryRange::new(trajectory, target) {
+            let color_index = index;
+
+            draw_pixel(&mut pixels, current.position, block_size, color_index);
+        }
+    }
+
+    let mut img = ImageBuffer::from_fn(real_size.0 as u32, real_size.1 as u32, |_x, _y| {
+        image::Rgb([255, 255, 255])
+    });
+
+    for ((x_, y_), color) in pixels {
+        let pixel = image::Rgb([color.0, color.1, color.2]);
+        let (x, y) = (x_ - x_min, y_range - y_);
+
+        if x >= 0 && y >= 0 && x < virtual_size.0 && y < virtual_size.1 {
+            for offset_y in 0..scale {
+                for offset_x in 0..scale {
+                    img.put_pixel(
+                        (scale * x + offset_x) as u32,
+                        (scale * y + offset_y) as u32,
+                        pixel,
+                    );
+                }
+            }
+        } else {
+            println!(
+                "out of boundary {:?} in {:?} {:?}",
+                (x, y),
+                virtual_size,
+                (x_min, x_max, y_min, y_max)
+            );
+        }
+    }
+
+    img.save(format!("frames/day17.frame{:05}.png", frame));
+}
+
 fn main() {
     println!("Part1: {}", solve_part1());
     println!("Part2: {}", solve_part2());
+
+    let mut frame = 0;
+    let target = Target::new("target area: x=20..30, y=-10..-5");
+    //let target = Target::new("target area: x=25..67, y=-260..-200");
+    let startpoint: Coordinate = (0, 0);
+    let mut y_limits = (0, 0);
+
+    let valid_trajectories = (1..target.x_max())
+        .map(|x_vel| {
+            (target.y_min()..(-1 * target.y_min()))
+                .filter_map(|y_vel| {
+                    let trajectory = Trajectory::new(startpoint, (x_vel, y_vel));
+
+                    if let Some(result) = TrajectoryRange::new(&trajectory, &target)
+                        .filter(|p| target.hit_target(p.position))
+                        .max_by(|a, b| a.max_position.1.cmp(&b.max_position.1))
+                    {
+                        if result.max_position.1 > y_limits.1 {
+                            y_limits.1 = result.max_position.1;
+                        }
+                        if result.min_position.1 < y_limits.0 {
+                            y_limits.0 = result.min_position.1;
+                        }
+                        Some(trajectory)
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<Trajectory>>()
+        })
+        .flatten()
+        .collect::<Vec<Trajectory>>();
+
+    println!("valid trajectories: {:?}", valid_trajectories);
+
+    draw_image(&startpoint, &target, &valid_trajectories, y_limits, frame);
 }
 
 #[cfg(test)]
@@ -168,7 +328,7 @@ mod tests {
             for y_vel in target.y_min()..(x_vel * 2) {
                 let trajectory = Trajectory::new((0, 0), (x_vel, y_vel));
 
-                if let Some(result) = TrajectoryRange::new(trajectory, &target)
+                if let Some(result) = TrajectoryRange::new(&trajectory, &target)
                     .filter(|p| target.hit_target(p.position))
                     .max_by(|a, b| a.max_position.1.cmp(&b.max_position.1))
                 {
@@ -198,7 +358,7 @@ mod tests {
         let target = Target::new("target area: x=20..30, y=-10..-5");
 
         let result =
-            TrajectoryRange::new(trajectory, &target).any(|p| target.hit_target(p.position));
+            TrajectoryRange::new(&trajectory, &target).any(|p| target.hit_target(p.position));
         assert_eq!(result, true);
     }
 
@@ -208,7 +368,7 @@ mod tests {
         let target = Target::new("target area: x=20..30, y=-10..-5");
 
         let result =
-            TrajectoryRange::new(trajectory, &target).any(|p| target.hit_target(p.position));
+            TrajectoryRange::new(&trajectory, &target).any(|p| target.hit_target(p.position));
         assert_eq!(result, true);
     }
 
@@ -334,7 +494,7 @@ mod tests {
             let trajectory = Trajectory::new((0, 0), initial_velocity);
             println!("Testing: {:?}", initial_velocity);
             assert_eq!(
-                TrajectoryRange::new(trajectory, &target).any(|p| target.hit_target(p.position)),
+                TrajectoryRange::new(&trajectory, &target).any(|p| target.hit_target(p.position)),
                 true
             );
         }
