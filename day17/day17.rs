@@ -160,29 +160,13 @@ fn draw_pixel(
     pixels: &mut Vec<(Coordinate, Color)>,
     position: Coordinate,
     block_size: i32,
-    color_index: usize,
+    index: usize,
 ) {
-    let palette = [
-        (23, 37, 23),
-        (12, 57, 83),
-        (9, 76, 114),
-        (5, 90, 140),
-        (2, 106, 167),
-        (0, 121, 191),
-        (41, 143, 202),
-        (91, 164, 207),
-        (139, 189, 217),
-        (188, 217, 234),
-        (228, 240, 246),
-        (228, 90, 120),
-    ];
-
-    let default_color = palette[0];
-
-    let color = match palette.get(color_index) {
-        Some(valid_color) => *valid_color,
-        None => default_color,
-    };
+    let color: Color = (
+        ((30 + 2 * index) % 256) as u8,
+        ((10 + 2 * index) % 256) as u8,
+        ((22 + 1 * index) % 256) as u8,
+    );
 
     for offset_y in 0..block_size {
         for offset_x in 0..block_size {
@@ -212,8 +196,8 @@ fn draw_image(
     let y_range = (1 + y_max - y_min);
     let dimensions: Coordinate = (x_range, y_range);
 
-    let border = 4;
-    let block_size: i32 = 1;
+    let border = 2;
+    let block_size: i32 = 3;
     let scale = 4;
     let virtual_size = (
         (block_size * (dimensions.0 + border * 2)),
@@ -224,18 +208,18 @@ fn draw_image(
     // Translate value to a color from a palette
     let mut pixels = Vec::<(Coordinate, Color)>::new();
 
-    draw_pixel(&mut pixels, *startpoint, block_size, 0);
+    draw_pixel(&mut pixels, *startpoint, block_size, 23);
 
     for y in target.y_range.clone() {
         for x in target.x_range.clone() {
-            draw_pixel(&mut pixels, (x, y), block_size, 10);
+            draw_pixel(&mut pixels, (x, y), block_size, 0);
         }
     }
 
     for (index, trajectory) in trajectories.iter().enumerate() {
         for current in TrajectoryRange::new(trajectory, target) {
             let color_index = index;
-
+            let (x, y) = current.position;
             draw_pixel(&mut pixels, current.position, block_size, color_index);
         }
     }
@@ -246,9 +230,12 @@ fn draw_image(
 
     for ((x_, y_), color) in pixels {
         let pixel = image::Rgb([color.0, color.1, color.2]);
-        let (x, y) = (x_ - x_min, y_range - y_);
+        let (x, y) = (
+            x_ - ((x_min - border) * block_size),
+            (y_range * block_size - (y_ - y_min * block_size)) + border * block_size,
+        );
 
-        if x >= 0 && y >= 0 && x < virtual_size.0 && y < virtual_size.1 {
+        if x >= 0 && y >= 0 && x < real_size.0 && y < real_size.1 {
             for offset_y in 0..scale {
                 for offset_x in 0..scale {
                     img.put_pixel(
@@ -261,10 +248,11 @@ fn draw_image(
         } else {
             println!(
                 "out of boundary {:?} in {:?} {:?}",
-                (x, y),
-                virtual_size,
+                ((x, y), (x_, (y_ - (y_min - border)))),
+                (x_range, y_range, virtual_size),
                 (x_min, x_max, y_min, y_max)
             );
+            panic!();
         }
     }
 
@@ -306,8 +294,6 @@ fn main() {
         })
         .flatten()
         .collect::<Vec<Trajectory>>();
-
-    println!("valid trajectories: {:?}", valid_trajectories);
 
     draw_image(&startpoint, &target, &valid_trajectories, y_limits, frame);
 }
