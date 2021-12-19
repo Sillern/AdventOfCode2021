@@ -92,12 +92,6 @@ impl SnailFish {
         if !has_exploded {
             if num_pairs == 3 && (self.a.len() != 0 || self.b.len() != 0) {
                 if self.a.len() != 0 {
-                    println!(
-                        "{:indent$}exploding branch a: {}",
-                        "",
-                        self,
-                        indent = num_pairs + 1
-                    );
                     assert!(self.a[0].b.len() == 0);
                     assert!(self.a[0].a.len() == 0);
 
@@ -116,12 +110,6 @@ impl SnailFish {
                     self.a = vec![];
                     (a, b, true)
                 } else if self.b.len() != 0 {
-                    println!(
-                        "{:indent$}exploding branch b: {}",
-                        "",
-                        self,
-                        indent = num_pairs + 1
-                    );
                     assert!(self.b[0].a.len() == 0);
                     assert!(self.b[0].b.len() == 0);
 
@@ -147,79 +135,29 @@ impl SnailFish {
                     let values = self.b[0].explode(num_pairs + 1, has_exploded);
                     let mut a = values.0;
                     let mut b = values.1;
-                    println!(
-                        "{:indent$}recursed with literal a: {}, {:?}",
-                        "",
-                        self,
-                        values,
-                        indent = num_pairs + 1
-                    );
 
                     if values.2 {
                         self.a_literal += a;
                         a = 0;
-                        println!(
-                            "{:indent$}updated with literal a: {}, {:?}",
-                            "",
-                            self,
-                            (a, b, values.2),
-                            indent = num_pairs + 1
-                        );
                     }
                     (a, b, values.2)
                 } else if self.b.len() == 0 && self.a.len() != 0 {
                     let values = self.a[0].explode(num_pairs + 1, has_exploded);
                     let mut a = values.0;
                     let mut b = values.1;
-                    println!(
-                        "{:indent$}recursed with literal b: {}, {:?}",
-                        "",
-                        self,
-                        values,
-                        indent = num_pairs + 1
-                    );
                     if values.2 {
                         self.b_literal += b;
                         b = 0;
-                        println!(
-                            "{:indent$}updated with literal b: {}, {:?}",
-                            "",
-                            self,
-                            (a, b, values.2),
-                            indent = num_pairs + 1
-                        );
                     }
                     (a, b, values.2)
                 } else if self.a.len() == 0 && self.b.len() == 0 {
                     assert!(!has_exploded);
                     (0, 0, has_exploded)
                 } else {
-                    println!(
-                        "{:indent$}recursing both branches: {}",
-                        "",
-                        self,
-                        indent = num_pairs + 1
-                    );
-
                     let a_values = self.a[0].explode(num_pairs + 1, has_exploded);
                     if a_values.2 {
                         if a_values.1 != 0 {
-                            println!(
-                                "{:indent$}updated[a]: {} --   -- {}",
-                                "",
-                                self.a[0],
-                                self.b[0],
-                                indent = num_pairs + 1
-                            );
                             self.b[0].add_leftmost(a_values.1);
-                            println!(
-                                "{:indent$}updated[a]: {} -- {} -> {}",
-                                "",
-                                self.a[0],
-                                a_values.1,
-                                self.b[0],
-                                indent = num_pairs + 1
-                            );
                         }
 
                         return (a_values.0, 0, true);
@@ -228,36 +166,12 @@ impl SnailFish {
 
                         if b_values.2 {
                             if b_values.0 != 0 {
-                                println!(
-                                    "{:indent$}updated[b]:  {} --   -- {}",
-                                    "",
-                                    self.a[0],
-                                    self.b[0],
-                                    indent = num_pairs + 1
-                                );
-
                                 self.a[0].add_rightmost(b_values.0);
-
-                                println!(
-                                    "{:indent$}updated[b]: {} <- {} -- {}",
-                                    "",
-                                    self.a[0],
-                                    b_values.0,
-                                    self.b[0],
-                                    indent = num_pairs + 1
-                                );
                             }
                             return (0, b_values.1, true);
                         }
                     }
 
-                    println!(
-                        "{:indent$}recursed both branches: {}: {:?}",
-                        "",
-                        self,
-                        a_values,
-                        indent = num_pairs + 1
-                    );
                     a_values
                 }
             }
@@ -319,15 +233,12 @@ impl ops::Add<Self> for SnailFish {
 
     fn add(self, rhs: Self) -> Self {
         let mut addition = SnailFish::new(self, rhs);
-        println!("after addition: {}", addition);
 
         while addition.could_explode(0) || addition.could_split() {
             if addition.could_explode(0) {
                 addition.explode(0, false);
-                println!("after explode:  {}", addition);
             } else if addition.could_split() {
                 addition.split(false);
-                println!("after split:    {}", addition);
             }
         }
         addition
