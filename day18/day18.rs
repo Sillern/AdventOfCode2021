@@ -3,7 +3,7 @@ use std::env;
 use std::fmt;
 use std::ops;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct SnailFish {
     a: Vec<SnailFish>,
     b: Vec<SnailFish>,
@@ -406,7 +406,23 @@ fn solve_part1(inputfile: String) -> usize {
 }
 
 fn solve_part2(inputfile: String) -> usize {
-    0
+    std::fs::read_to_string(inputfile)
+        .expect("Something went wrong reading the file")
+        .lines()
+        .map(|input| parse_string(input))
+        .permutations(2)
+        .fold(0, |max, values| {
+            let c = values
+                .into_iter()
+                .reduce(|sum, snailfish| sum + snailfish)
+                .unwrap()
+                .magnitude();
+            if c > max {
+                c
+            } else {
+                max
+            }
+        })
 }
 
 fn main() {
