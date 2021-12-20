@@ -21,19 +21,35 @@ impl ImageEnhancer {
     }
 
     pub fn has_detail(&self, image: &Image, pixel: Coordinate, flipped_boundary: bool) -> bool {
+        let x_min = image.pixels.iter().map(|(pos, _)| pos.0).min().unwrap() as i32;
+        let x_max = image.pixels.iter().map(|(pos, _)| pos.0).max().unwrap() as i32;
+        let y_min = image.pixels.iter().map(|(pos, _)| pos.1).min().unwrap() as i32;
+        let y_max = image.pixels.iter().map(|(pos, _)| pos.1).max().unwrap() as i32;
+
         let lookup_index =
             AdjacentPixels::new(pixel)
                 .enumerate()
                 .fold(0, |acc, (index, position)| {
-                    if let Some(is_boundary) = image.pixels.get(&position) {
-                        if *is_boundary && flipped_boundary {
-                            acc
+                    let (x, y) = position;
+                    let value = if x < x_min || x > x_max || y < y_min || y > y_max {
+                        if flipped_boundary {
+                            1
                         } else {
-                            acc + (1 << (8 - index))
+                            0
                         }
                     } else {
-                        acc
-                    }
+                        if let Some(is_lit) = image.pixels.get(&position) {
+                            if *is_lit {
+                                1
+                            } else {
+                                0
+                            }
+                        } else {
+                            0
+                        }
+                    };
+
+                    acc + (value << (8 - index))
                 });
 
         if let Some(has_detail) = self.enhance.get(&lookup_index) {
@@ -60,7 +76,7 @@ impl Image {
                         .enumerate()
                         .filter_map(|(x, c)| {
                             if c == '#' {
-                                Some(((x as i32, y as i32), false))
+                                Some(((x as i32, y as i32), true))
                             } else {
                                 None
                             }
@@ -73,56 +89,23 @@ impl Image {
     }
 
     pub fn enhance(&mut self, enhancer: &ImageEnhancer, flip_boundary: bool) {
-        let mut proper_pixels = self
-            .pixels
-            .iter()
-            .filter_map(|(pos, is_boundary)| {
-                if *is_boundary && flip_boundary {
-                    None
-                } else {
-                    Some(AdjacentPixels::new(*pos).collect::<Vec<Coordinate>>())
-                }
-            })
-            .flatten()
-            .sorted()
-            .unique()
-            .collect::<Vec<Coordinate>>();
+        let x_min = self.pixels.iter().map(|(pos, _)| pos.0).min().unwrap() as i32;
+        let x_max = self.pixels.iter().map(|(pos, _)| pos.0).max().unwrap() as i32;
+        let y_min = self.pixels.iter().map(|(pos, _)| pos.1).min().unwrap() as i32;
+        let y_max = self.pixels.iter().map(|(pos, _)| pos.1).max().unwrap() as i32;
 
-        let boundary_pixels = proper_pixels
-            .iter()
-            .map(|pos| {
-                AdjacentPixels::new(*pos)
-                    .filter_map(|test_pos| {
-                        if proper_pixels.contains(&test_pos) {
-                            None
-                        } else {
-                            Some((test_pos, true))
-                        }
+        self.pixels = ((y_min - 3)..(y_max + 4))
+            .map(|y| {
+                ((x_min - 3)..(x_max + 4))
+                    .map(|x| {
+                        let pos = (x, y);
+                        (pos, enhancer.has_detail(self, pos, flip_boundary))
                     })
                     .collect::<Vec<(Coordinate, bool)>>()
             })
             .flatten()
-            .sorted()
-            .unique()
+            .filter(|(pos, has_value)| *has_value)
             .collect::<HashMap<Coordinate, bool>>();
-
-        println!("proper: {:?}", proper_pixels);
-        println!("boundary: {:?}", boundary_pixels);
-        self.pixels = proper_pixels
-            .iter()
-            .filter_map(|pos| {
-                if enhancer.has_detail(self, *pos, flip_boundary) {
-                    Some((*pos, false))
-                } else {
-                    None
-                }
-            })
-            .collect::<HashMap<Coordinate, bool>>();
-
-        for (key, value) in boundary_pixels.iter() {
-            assert!(*value == true);
-            self.pixels.insert(*key, *value);
-        }
     }
 }
 
@@ -180,30 +163,40 @@ fn solve_part1(inputfile: String) -> usize {
 
     println!(
         "next_pixel_len: {}",
-        image
-            .pixels
-            .iter()
-            .filter(|&(_, is_boundary)| !is_boundary)
-            .count()
+        image.pixels.iter().filter(|&(_, pixel)| *pixel).count()
     );
-    draw_image(&image, 0, 0 % 2 == 0);
+    draw_image(&image, 0);
     for iteration in 1..3 {
         image.enhance(&image_enhancer, iteration % 2 == 0);
-        draw_image(&image, iteration, iteration % 2 == 0);
-        println!(
-            "next_pixel_len: {}",
-            image
-                .pixels
-                .iter()
-                .filter(|&(_, is_boundary)| !is_boundary)
-                .count()
-        );
+        draw_image(&image, iteration);
     }
-    0
+    image.pixels.iter().filter(|&(_, pixel)| *pixel).count()
 }
 
 fn solve_part2(inputfile: String) -> usize {
-    0
+    let mut text_parts = std::fs::read_to_string(inputfile)
+        .expect("Something went wrong reading the file")
+        .split("\n\n")
+        .map(|blob| blob.to_string())
+        .collect::<Vec<String>>();
+
+    let image_enhancer = ImageEnhancer::from_string(&text_parts[0]);
+    let mut image = Image::from_string(&text_parts[1]);
+
+    println!(
+        "next_pixel_len: {}",
+        image.pixels.iter().filter(|&(_, pixel)| *pixel).count()
+    );
+    for iteration in 1..51 {
+        image.enhance(&image_enhancer, iteration % 2 == 0);
+        draw_image(&image, iteration);
+        println!(
+            "next_pixel_len[{}]: {}",
+            iteration,
+            image.pixels.iter().filter(|&(_, pixel)| *pixel).count()
+        );
+    }
+    image.pixels.iter().filter(|&(_, pixel)| *pixel).count()
 }
 
 use image::ImageBuffer;
@@ -234,7 +227,7 @@ fn draw_pixel(
     }
 }
 
-fn draw_image(image: &Image, frame: u32, include_boundary: bool) {
+fn draw_image(image: &Image, frame: u32) {
     let x_min = image.pixels.iter().map(|(pos, _)| pos.0).min().unwrap();
     let x_max = image.pixels.iter().map(|(pos, _)| pos.0).max().unwrap();
     let y_min = image.pixels.iter().map(|(pos, _)| pos.1).min().unwrap();
@@ -255,17 +248,10 @@ fn draw_image(image: &Image, frame: u32, include_boundary: bool) {
     // Translate value to a color from a palette
     let mut pixels = Vec::<(Coordinate, Color)>::new();
 
-    for (pos, is_boundary) in image.pixels.iter() {
-        draw_pixel(
-            &mut pixels,
-            *pos,
-            block_size,
-            if include_boundary && *is_boundary {
-                40
-            } else {
-                1
-            },
-        );
+    for (pos, has_value) in image.pixels.iter() {
+        if *has_value {
+            draw_pixel(&mut pixels, *pos, block_size, 40);
+        }
     }
 
     let mut img = ImageBuffer::from_fn(real_size.0 as u32, real_size.1 as u32, |_x, _y| {
