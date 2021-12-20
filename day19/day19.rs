@@ -98,9 +98,7 @@ impl Scanner {
         &self,
         map: &mut HashMap<Coordinate, usize>,
         translation: Coordinate,
-        rotation: Coordinate,
     ) -> usize {
-        // rotate
         map.entry(translation).and_modify(|e| *e = 0).or_insert(0);
 
         self.detections.iter().fold(0, |mut acc, pos| {
@@ -113,7 +111,6 @@ impl Scanner {
                 .and_modify(|e| {
                     if *e == 1 {
                         acc += 1;
-                        println!("match on {:?}", pos);
                     }
                     *e = 1;
                 })
@@ -124,26 +121,15 @@ impl Scanner {
 
     pub fn print(&self) {
         let mut map = HashMap::new();
-        let no_rotation = (0, 0, 0);
         let no_translation = (0, 0, 0);
-        self.add_to_map(&mut map, no_translation, no_rotation);
+        self.add_to_map(&mut map, no_translation);
 
         print_map(&map);
     }
 
     pub fn find_maximum_matching_points(&self, other: &Self) -> Coordinate {
-        let rotations = [
-            (0, 0, 0),
-            (1, 0, 0),
-            (-1, 0, 0),
-            (0, 1, 0),
-            (-1, 1, 0),
-            (0, -1, 0),
-            (1, -1, 0),
-        ];
         let mut max_matching_points = 0;
         let mut best_translation = (0, 0, 0);
-        let mut rotation = rotations[0];
 
         for self_offset in self.detections.iter() {
             for other_offset in other.detections.iter() {
@@ -152,7 +138,7 @@ impl Scanner {
                     self_offset.1 - other_offset.1,
                     self_offset.2 - other_offset.2,
                 );
-                let matching_points = self.num_matching_points(other, offset, rotation);
+                let matching_points = self.num_matching_points(other, offset);
                 if matching_points > max_matching_points {
                     best_translation = offset;
                     max_matching_points = matching_points;
@@ -162,26 +148,62 @@ impl Scanner {
         best_translation
     }
 
-    pub fn num_matching_points(
-        &self,
-        other: &Self,
-        translation: Coordinate,
-        rotation: Coordinate,
-    ) -> usize {
+    pub fn find_match(&self, other: &Self, min_points: usize) -> (Coordinate, usize) {
         let mut map = HashMap::new();
-        let no_rotation = (0, 0, 0);
+        map.entry(self.position).and_modify(|e| *e = 0).or_insert(0);
+
+        self.detections.iter().for_each(|&pos| {
+            map.entry(pos).and_modify(|e| *e = 1).or_insert(1);
+        });
+
+        let mut translation = (0, 0, 0);
+        let mut num_points = 0;
+
+        let found = ScannerOrientation::new(&other.detections).any(|detections| {
+            self.detections.iter().any(|self_offset| {
+                detections.iter().any(|other_offset| {
+                    let offset = (
+                        self_offset.0 - other_offset.0,
+                        self_offset.1 - other_offset.1,
+                        self_offset.2 - other_offset.2,
+                    );
+                    num_points = detections.iter().fold(0, |acc, pos| {
+                        acc + match map.get(&(pos.0 + offset.0, pos.1 + offset.1, pos.2 + offset.2))
+                        {
+                            Some(0) => 0,
+                            Some(1) => 1,
+                            Some(_) => panic!(),
+                            None => 0,
+                        }
+                    });
+                    if num_points >= min_points {
+                        translation = offset;
+                    }
+                    num_points >= min_points
+                })
+            })
+        });
+
+        if found {
+            println!("found: {:?}", found);
+        }
+
+        (translation, num_points)
+    }
+
+    pub fn num_matching_points(&self, other: &Self, translation: Coordinate) -> usize {
+        let mut map = HashMap::new();
         let no_translation = (0, 0, 0);
-        self.add_to_map(&mut map, no_translation, no_rotation)
-            + other.add_to_map(&mut map, translation, rotation)
+
+        self.add_to_map(&mut map, no_translation) + other.add_to_map(&mut map, translation)
     }
 
     pub fn is_matching(&self, other: &Self, num_matching_points: usize) -> bool {
         let mut map = HashMap::new();
-        let no_rotation = (0, 0, 0);
         let no_translation = (0, 0, 0);
         num_matching_points
-            == self.add_to_map(&mut map, no_translation, no_rotation)
-                + other.add_to_map(&mut map, no_translation, no_rotation)
+            == self.add_to_map(&mut map, no_translation)
+                + other.add_to_map(&mut map, no_translation)
     }
 }
 
@@ -191,9 +213,9 @@ struct ScannerOrientation {
 }
 
 impl ScannerOrientation {
-    fn new(scanner: &Scanner) -> Self {
+    fn new(detections: &Vec<Coordinate>) -> Self {
         Self {
-            start: scanner.detections.clone(),
+            start: detections.clone(),
             index: 0,
         }
     }
@@ -261,7 +283,6 @@ impl Iterator for ScannerOrientation {
             })
             .collect::<Self::Item>();
 
-        println!("rotated: {:?}", next);
         self.index += 1;
         Some(next)
     }
@@ -302,17 +323,33 @@ fn print_map(map: &HashMap<Coordinate, usize>) {
 }
 
 fn solve_part1(inputfile: String) -> usize {
-    let scanners = std::fs::read_to_string(inputfile)
+    let mut scanners = std::fs::read_to_string(inputfile)
         .expect("Scanner went wrong reading the file")
         .split("\n\n")
         .map(|textblob| Scanner::from_string(textblob))
         .collect::<Vec<Scanner>>();
-    println!("scanners: {:?}", scanners);
-    scanners[0].print();
-    println!();
-    scanners[1].print();
-    println!();
-    scanners[0].num_matching_points(&scanners[1], (-1, 0, 0), (0, 0, 0));
+
+    let mut join_pairs: Vec<(usize, usize, Coordinate)> = vec![];
+
+    scanners.iter().combinations(2).for_each(|scanner_pair| {
+        let best_match = scanner_pair[0].find_match(&scanner_pair[1], 12);
+        if best_match.1 == 12 {
+            join_pairs.push((
+                scanner_pair[0].id as usize,
+                scanner_pair[1].id as usize,
+                best_match.0,
+            ));
+        }
+    });
+
+    for &(a, b, offset) in join_pairs.iter() {
+        println!("scanner pair: {:?} -- {:?}", a, b);
+        println!("scanner pair: {:?} -- {:?}", scanners[a].id, scanners[b].id);
+        println!("translate:  {:?}", scanners[b]);
+        scanners[b].translate(offset);
+        println!("translated: {:?}", scanners[b]);
+        // 68,-1246,-43
+    }
     0
 }
 
@@ -411,83 +448,11 @@ mod tests {
         );
 
         for rotated_scanner in rotated_scanners {
-            println!("trying to find {:?}", rotated_scanner);
             let found = ScannerOrientation::new(&scanner)
                 .any(|detections| detections == rotated_scanner.detections);
 
-            println!("{:?} found? {}", rotated_scanner, found);
             assert_eq!(found, true);
         }
-        /*
-        let rotation_matrices = vec![
-            (
-                (-1, -1, 1),
-                vec![vec![1, 0, 0], vec![0, 0, -1], vec![0, 1, 0]],
-            ), // x
-            (
-                (-1, -1, 1),
-                vec![vec![0, 0, 1], vec![0, 1, 0], vec![-1, 0, 0]],
-            ), // y
-            (
-                (-1, -1, 1),
-                vec![vec![0, -1, 0], vec![1, 0, 0], vec![0, 0, 1]],
-            ), // z
-        ];
-
-        for rotated_scanner in rotated_scanners {
-            println!("trying to find {:?}", rotated_scanner);
-            let found = rotation_matrices.iter().any(|(axis, rotation_matrix)| {
-                let mut found_in_axis = false;
-                println!("rotating: {:?}", axis);
-                for _ in 0..4 {
-                    scanner.rotate(rotation_matrix);
-                    if rotated_scanner.detections == scanner.detections {
-                        found_in_axis = true;
-                    }
-                }
-                println!("flipping: {:?}", axis);
-                scanner.flip_axis(*axis);
-                for _ in 0..4 {
-                    scanner.rotate(rotation_matrix);
-                    if rotated_scanner.detections == scanner.detections {
-                        found_in_axis = true;
-                    }
-                }
-                scanner.flip_axis(*axis);
-                found_in_axis
-            });
-
-            println!("{:?} found? {}", rotated_scanner, found);
-            assert_eq!(found, true);
-        }
-        */
-        /*
-        // x
-        vec![vec![1, 0, 0], vec![0, 0, -1], vec![0, 1, 0]];
-        // y
-        vec![vec![0, 0, 1], vec![0, 1, 0], vec![-1, 0, 0]];
-        // z
-        vec![vec![0, -1, 0], vec![1, 0, 0], vec![0, 0, 1]];
-        */
-        /*
-        // x
-        scanner.rotate(vec![vec![1, 0, 0], vec![0, 0, -1], vec![0, 1, 0]]);
-        scanner.rotate(vec![vec![1, 0, 0], vec![0, 0, -1], vec![0, 1, 0]]);
-        scanner.rotate(vec![vec![1, 0, 0], vec![0, 0, -1], vec![0, 1, 0]]);
-        scanner.rotate(vec![vec![1, 0, 0], vec![0, 0, -1], vec![0, 1, 0]]);
-
-        // y
-        scanner.rotate(vec![vec![0, 0, 1], vec![0, 1, 0], vec![-1, 0, 0]]);
-        scanner.rotate(vec![vec![0, 0, 1], vec![0, 1, 0], vec![-1, 0, 0]]);
-        scanner.rotate(vec![vec![0, 0, 1], vec![0, 1, 0], vec![-1, 0, 0]]);
-        assert_eq!(scanner.detections, rotated_scanner.detections);
-        scanner.rotate(vec![vec![0, 0, 1], vec![0, 1, 0], vec![-1, 0, 0]]);
-        // z
-        scanner.rotate(vec![vec![0, -1, 0], vec![1, 0, 0], vec![0, 0, 1]]);
-        scanner.rotate(vec![vec![0, -1, 0], vec![1, 0, 0], vec![0, 0, 1]]);
-        scanner.rotate(vec![vec![0, -1, 0], vec![1, 0, 0], vec![0, 0, 1]]);
-        scanner.rotate(vec![vec![0, -1, 0], vec![1, 0, 0], vec![0, 0, 1]]);
-        */
         println!("rotated: {:?}", scanner);
     }
 }
