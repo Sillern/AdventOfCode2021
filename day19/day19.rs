@@ -148,7 +148,7 @@ impl Scanner {
         best_translation
     }
 
-    pub fn find_match(&self, other: &Self, min_points: usize) -> (Coordinate, usize) {
+    pub fn find_match(&mut self, other: &Self, min_points: usize) -> Option<Coordinate> {
         let mut map = HashMap::new();
         map.entry(self.position).and_modify(|e| *e = 0).or_insert(0);
 
@@ -157,38 +157,67 @@ impl Scanner {
         });
 
         let mut translation = (0, 0, 0);
-        let mut num_points = 0;
 
-        let found = ScannerOrientation::new(&other.detections).any(|detections| {
-            self.detections.iter().any(|self_offset| {
-                detections.iter().any(|other_offset| {
-                    let offset = (
-                        self_offset.0 - other_offset.0,
-                        self_offset.1 - other_offset.1,
-                        self_offset.2 - other_offset.2,
-                    );
-                    num_points = detections.iter().fold(0, |acc, pos| {
-                        acc + match map.get(&(pos.0 + offset.0, pos.1 + offset.1, pos.2 + offset.2))
-                        {
-                            Some(0) => 0,
-                            Some(1) => 1,
-                            Some(_) => panic!(),
-                            None => 0,
-                        }
-                    });
-                    if num_points >= min_points {
-                        translation = offset;
-                    }
-                    num_points >= min_points
+        // for every rotation
+        if ScannerOrientation::new(&other.detections).any(|other_detections| {
+            let offsets = self
+                .detections
+                .iter()
+                .map(|self_offset| {
+                    other_detections
+                        .iter()
+                        .map(|other_offset| {
+                            (
+                                self_offset.0 - other_offset.0,
+                                self_offset.1 - other_offset.1,
+                                self_offset.2 - other_offset.2,
+                            )
+                        })
+                        .collect::<Vec<Coordinate>>()
                 })
+                .flatten()
+                .sorted()
+                .unique()
+                .collect::<Vec<Coordinate>>();
+
+            offsets.iter().any(|offset| {
+                let num_points = other_detections.iter().fold(0, |acc, pos| {
+                    acc + match map.get(&(pos.0 + offset.0, pos.1 + offset.1, pos.2 + offset.2)) {
+                        Some(0) => 0,
+                        Some(1) => 1,
+                        Some(_) => panic!(),
+                        None => 0,
+                    }
+                });
+                if num_points >= min_points {
+                    println!("self[{}] to {}, offset: {:?}", self.id, other.id, offset);
+                    translation = *offset;
+
+                    self.detections = self
+                        .detections
+                        .iter()
+                        .chain(
+                            other_detections
+                                .iter()
+                                .map(|pos| (pos.0 + offset.0, pos.1 + offset.1, pos.2 + offset.2))
+                                .collect::<Vec<Coordinate>>()
+                                .iter(),
+                        )
+                        .sorted()
+                        .unique()
+                        .map(|pos| *pos)
+                        .collect();
+
+                    true
+                } else {
+                    false
+                }
             })
-        });
-
-        if found {
-            println!("found: {:?}", found);
+        }) {
+            Some(translation)
+        } else {
+            None
         }
-
-        (translation, num_points)
     }
 
     pub fn num_matching_points(&self, other: &Self, translation: Coordinate) -> usize {
@@ -322,48 +351,53 @@ fn print_map(map: &HashMap<Coordinate, usize>) {
     }
 }
 
-fn solve_part1(inputfile: String) -> usize {
+fn solve_parts(inputfile: String) -> (usize, usize) {
     let mut scanners = std::fs::read_to_string(inputfile)
         .expect("Scanner went wrong reading the file")
         .split("\n\n")
-        .map(|textblob| Scanner::from_string(textblob))
+        .map(|textblob| {
+            let scanner = Scanner::from_string(textblob);
+            scanner
+        })
         .collect::<Vec<Scanner>>();
 
-    let mut join_pairs: Vec<(usize, usize, Coordinate)> = vec![];
+    let mut global_map = scanners.pop().unwrap();
 
-    scanners.iter().combinations(2).for_each(|scanner_pair| {
-        let best_match = scanner_pair[0].find_match(&scanner_pair[1], 12);
-        if best_match.1 == 12 {
-            join_pairs.push((
-                scanner_pair[0].id as usize,
-                scanner_pair[1].id as usize,
-                best_match.0,
-            ));
+    let mut scanner_positions = vec![];
+
+    while scanners.len() != 0 {
+        let scanner = scanners.pop().unwrap();
+        if let Some(scanner_position) = global_map.find_match(&scanner, 12) {
+            println!("best match[{}]: {:?}", scanner.id, scanner_position);
+            scanner_positions.push(scanner_position);
+        } else {
+            scanners.insert(0, scanner);
         }
-    });
-
-    for &(a, b, offset) in join_pairs.iter() {
-        println!("scanner pair: {:?} -- {:?}", a, b);
-        println!("scanner pair: {:?} -- {:?}", scanners[a].id, scanners[b].id);
-        println!("translate:  {:?}", scanners[b]);
-        scanners[b].translate(offset);
-        println!("translated: {:?}", scanners[b]);
-        // 68,-1246,-43
     }
-    0
-}
 
-fn solve_part2(inputfile: String) -> usize {
-    std::fs::read_to_string(inputfile)
-        .expect("Scanner went wrong reading the file")
-        .lines();
-    0
+    println!("global beacons: {}", global_map.detections.len(),);
+    println!("scanner positions: {:?}", scanner_positions);
+    let max_manhattan_distance = scanner_positions
+        .iter()
+        .combinations(2)
+        .fold(0, |max, pair| {
+            let a = pair[0];
+            let b = pair[1];
+            println!("{:?}", (a, b));
+            let manhattan_distance = (a.0 - b.0).abs() + (a.1 - b.1).abs() + (a.2 - b.2).abs();
+            if manhattan_distance > max {
+                manhattan_distance
+            } else {
+                max
+            }
+        });
+    println!("max manhattan distance: {:?}", max_manhattan_distance);
+    (global_map.detections.len(), max_manhattan_distance as usize)
 }
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    println!("Part1: {}", solve_part1(args[1].to_string()));
-    println!("Part2: {}", solve_part2(args[1].to_string()));
+    println!("Parts: {:?}", solve_parts(args[1].to_string()));
 }
 
 #[cfg(test)]
