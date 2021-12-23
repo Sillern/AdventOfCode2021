@@ -66,6 +66,22 @@ impl Reactor {
         }
     }
 
+    pub fn split_cuboids(&mut self) {
+        for instruction in &self.reboot_instructions {
+            if !instruction.status {
+                println!("detect disjunction: {:?}", &instruction);
+            }
+        }
+    }
+
+    pub fn num_cubes_in_cuboids(&self) -> usize {
+        self.reboot_instructions.iter().fold(0, |acc, instruction| {
+            acc + (instruction.x_range.end - instruction.x_range.start).abs() as usize
+                + (instruction.y_range.end - instruction.y_range.start).abs() as usize
+                + (instruction.z_range.end - instruction.z_range.start).abs() as usize
+        })
+    }
+
     pub fn limited_boot(&mut self) {
         let boundary = 50;
         for instruction in &self.reboot_instructions {
@@ -139,6 +155,20 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn test_split_cuboids() {
+        let mut reactor = Reactor::from_string(
+            "on x=10..12,y=10..12,z=10..12
+on x=11..13,y=11..13,z=11..13
+off x=9..11,y=9..11,z=9..11
+on x=10..10,y=10..10,z=10..10",
+        );
+
+        reactor.split_cuboids();
+
+        assert_eq!(reactor.num_cubes_in_cuboids(), 27 + 19 - 8 + 1);
+    }
+
     #[test]
     fn test_small_example() {
         let mut reactor = Reactor::from_string(
