@@ -4,9 +4,9 @@ use std::fmt;
 
 type Energy = usize;
 type Coordinate = (i32, i32);
-type Move = (Coordinate, Coordinate);
+type Move = (MapType, Coordinate, Coordinate, Energy);
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 enum MapType {
     Wall,
     Path,
@@ -116,19 +116,20 @@ impl Amphipod {
             let mut queue = vec![(*start_pos, vec![])];
             let mut visited = vec![];
 
-            while let Some((current_pos, mut path)) = queue.pop() {
+            while let Some((current_pos, path)) = queue.pop() {
+                if current_pos == *end_pos {
+                    return Some(path.len());
+                }
                 for adjacent in &adjacents {
                     let next_pos = (current_pos.0 + adjacent.0, current_pos.1 + adjacent.1);
 
                     if !visited.contains(&next_pos) {
                         visited.push(next_pos);
-                        if next_pos == *end_pos {
-                            return Some(path.len());
-                        }
 
                         if let Some(MapType::Path) = map.get(&next_pos) {
-                            path.push(current_pos);
-                            queue.push((next_pos, path.clone()));
+                            let mut next_path = path.clone();
+                            next_path.push(current_pos);
+                            queue.push((next_pos, next_path));
                         }
                     }
                 }
@@ -204,23 +205,35 @@ impl Burrows {
         Self { map }
     }
 
-    fn get_valid_moves(&self, moves: &Vec<Move>) -> Vec<(Move, Energy, IsHome)> {
-        self.map
+    fn get_valid_moves(&self, moves: &Vec<Move>) -> Vec<(Move, IsHome)> {
+        let mut map_copy = self.map.clone();
+        for (map_type, from, to, _) in moves {
+            map_copy
+                .entry(to.clone())
+                .and_modify(|dest| *dest = *map_type);
+            map_copy
+                .entry(from.clone())
+                .and_modify(|source| *source = MapType::Path);
+        }
+
+        //print_map(&map_copy);
+
+        map_copy
             .iter()
             .filter_map(|(coordinate, map_type)| match map_type {
                 MapType::AmphipodAmber
                 | MapType::AmphipodBronze
                 | MapType::AmphipodCopper
                 | MapType::AmphipodDesert => {
-                    let valid_locations = Amphipod::get_valid_locations(coordinate, &self.map);
+                    let valid_locations = Amphipod::get_valid_locations(coordinate, &map_copy);
                     if valid_locations.len() != 0 {
                         Some(
                             valid_locations
                                 .iter()
                                 .map(|(pos, energy, is_home)| {
-                                    ((*coordinate, *pos), *energy, *is_home)
+                                    ((*map_type, *coordinate, *pos, *energy), *is_home)
                                 })
-                                .collect::<Vec<(Move, Energy, IsHome)>>(),
+                                .collect::<Vec<(Move, IsHome)>>(),
                         )
                     } else {
                         None
@@ -229,65 +242,56 @@ impl Burrows {
                 _ => None,
             })
             .flatten()
-            .sorted_by(|(_, energy_a, _), (_, energy_b, _)| energy_a.cmp(energy_b))
-            .collect::<Vec<(Move, Energy, IsHome)>>()
+            .sorted_by(|((_, _, _, energy_a), _), ((_, _, _, energy_b), _)| energy_a.cmp(energy_b))
+            .collect::<Vec<(Move, IsHome)>>()
     }
 
     pub fn organize(&mut self) -> usize {
-        /*
-        fn least_energy(
-            start_pos: &Coordinate,
-            end_pos: &Coordinate,
-            map: &HashMap<Coordinate, MapType>,
-        ) -> Option<usize> {
-            let adjacents = vec![(-1, 0), (1, 0), (0, -1), (0, 1)];
-
-            let mut queue = vec![(*start_pos, vec![])];
-            let mut visited = vec![];
-
-            while let Some((current_pos, mut path)) = queue.pop() {
-                for adjacent in &adjacents {
-                    let next_pos = (current_pos.0 + adjacent.0, current_pos.1 + adjacent.1);
-
-                    if !visited.contains(&next_pos) {
-                        visited.push(next_pos);
-                        if next_pos == *end_pos {
-                            return Some(path.len());
-                        }
-
-                        if let Some(MapType::Path) = map.get(&next_pos) {
-                            path.push(current_pos);
-                            queue.push((next_pos, path.clone()));
-                        }
-                    }
-                }
-            }
-            None
-        }
-        */
-
-        let starting_path: Vec<(Coordinate, Coordinate)> = vec![];
+        let starting_path: Vec<Move> = vec![];
         let starting_locations = self.get_valid_moves(&starting_path);
-        let mut queue = vec![(starting_locations, starting_path)];
+        let mut queue = vec![(0, starting_locations, starting_path)];
+        let mut visited = vec![];
 
-        println!("starting positions: {:?}", queue.len());
-        for (entry, path) in &queue {
-            for starting_position in entry {
-                println!("    {:?}", starting_position);
+        let mut steps = 0;
+        while let Some((total_energy, valid_moves, path)) = queue.pop() {
+            if visited.contains(&path) {
+                continue;
             }
-        }
+            visited.push(path.clone());
 
-        while let Some((valid_moves, path)) = queue.pop() {
-            for (next_move, energy, is_home) in valid_moves {
-                let mut next_path = path.clone();
-                next_path.push(next_move);
-                let next_moves = self.get_valid_moves(&path);
-
-                for starting_position in next_moves {
-                    println!("    {:?}", starting_position);
-                }
+            println!(
+                "Step[{}], energy: {}, num_moves: {}",
+                steps,
+                total_energy,
+                path.len(),
+            );
+            if self.num_organized_amphipods(&path) == self.num_amphipods() {
+                print_map_with_moves(&self.map, &path);
                 break;
             }
+
+            for (next_move, is_home) in valid_moves {
+                if let Some((_, was_coming_from, _, _)) = path.last() {
+                    if was_coming_from == &next_move.2 {
+                        continue;
+                    }
+                }
+
+                let mut next_path = path.clone();
+                next_path.push(next_move);
+                let next_moves = self.get_valid_moves(&next_path);
+                let next_total_energy = next_path
+                    .iter()
+                    .fold(0, |acc, (_, _, _, energy)| acc + energy);
+
+                queue.insert(0, ((next_total_energy, next_moves, next_path)));
+            }
+            steps += 1;
+            if steps > 10000 {
+                //break;
+            }
+
+            //queue.sort_by(|(energy_a, _, _), (energy_b, _, _)| energy_b.cmp(energy_a));
         }
 
         0
@@ -306,8 +310,18 @@ impl Burrows {
             .count()
     }
 
-    pub fn num_organized_amphipods(&self) -> usize {
-        self.map
+    pub fn num_organized_amphipods(&self, moves: &Vec<Move>) -> usize {
+        let mut map_copy = self.map.clone();
+        for (map_type, from, to, _) in moves {
+            map_copy
+                .entry(to.clone())
+                .and_modify(|dest| *dest = *map_type);
+            map_copy
+                .entry(from.clone())
+                .and_modify(|source| *source = MapType::Path);
+        }
+
+        map_copy
             .iter()
             .filter(|(coordinate, map_type)| match map_type {
                 MapType::AmphipodAmber
@@ -318,6 +332,48 @@ impl Burrows {
             })
             .count()
     }
+}
+
+fn print_map_with_moves(map: &HashMap<Coordinate, MapType>, moves: &Vec<Move>) {
+    let mut map_copy = map.clone();
+    for (map_type, from, to, _) in moves {
+        map_copy
+            .entry(to.clone())
+            .and_modify(|dest| *dest = *map_type);
+        map_copy
+            .entry(from.clone())
+            .and_modify(|source| *source = MapType::Path);
+    }
+
+    print_map(&map_copy);
+}
+fn print_map(map: &HashMap<Coordinate, MapType>) {
+    let x_min = map.iter().map(|(pos, _)| pos.0).min().unwrap();
+    let x_max = map.iter().map(|(pos, _)| pos.0).max().unwrap();
+    let y_min = map.iter().map(|(pos, _)| pos.1).min().unwrap();
+    let y_max = map.iter().map(|(pos, _)| pos.1).max().unwrap();
+
+    println!(
+        "{}",
+        (y_min..y_max + 1)
+            .map(|y| {
+                (x_min..x_max + 1)
+                    .map(|x| {
+                        let position = (x, y);
+                        match map.get(&position) {
+                            Some(MapType::Wall) => "#",
+                            Some(MapType::Path) => ".",
+                            Some(MapType::AmphipodAmber) => "A",
+                            Some(MapType::AmphipodBronze) => "B",
+                            Some(MapType::AmphipodCopper) => "C",
+                            Some(MapType::AmphipodDesert) => "D",
+                            None => " ",
+                        }
+                    })
+                    .join("")
+            })
+            .join("\n")
+    );
 }
 
 impl fmt::Display for Burrows {
@@ -359,10 +415,8 @@ fn solve_part1() -> usize {
   #A#D#C#A#
   #########",
     );
-    println!("{}", burrows);
-    let least_energy = burrows.organize();
-    println!("{}", burrows);
-    least_energy
+
+    burrows.organize()
 }
 
 fn solve_part2() -> usize {
@@ -419,19 +473,21 @@ mod tests {
         let could_go_home = burrows
             .get_valid_moves(&vec![])
             .iter()
-            .filter_map(|(amphipod_move, energy, is_home)| {
+            .filter_map(|(amphipod_move, is_home)| {
                 if *is_home == IsHome::Yes {
-                    Some((*amphipod_move, *energy, *is_home))
+                    Some((*amphipod_move, *is_home))
                 } else {
                     None
                 }
             })
-            .collect::<Vec<(Move, Energy, IsHome)>>();
+            .collect::<Vec<(Move, IsHome)>>();
 
         assert_eq!(could_go_home.len(), 1);
-        let (amphipod_move, energy, is_home) = could_go_home[0];
-        assert_eq!(amphipod_move, ((5, 2), (7, 2)));
-        assert_eq!(energy, 400);
+        let (amphipod_move, is_home) = could_go_home[0];
+        assert_eq!(
+            amphipod_move,
+            (MapType::AmphipodCopper, (5, 2), (7, 2), 400)
+        );
         assert_eq!(is_home, IsHome::Yes);
     }
 
@@ -448,20 +504,19 @@ mod tests {
         let could_go_home = burrows
             .get_valid_moves(&vec![])
             .iter()
-            .filter_map(|(amphipod_move, energy, is_home)| {
+            .filter_map(|(amphipod_move, is_home)| {
                 if *is_home == IsHome::Yes {
-                    Some((*amphipod_move, *energy, *is_home))
+                    Some((*amphipod_move, *is_home))
                 } else {
                     None
                 }
             })
-            .collect::<Vec<(Move, Energy, IsHome)>>();
+            .collect::<Vec<(Move, IsHome)>>();
 
         println!("could go home: {:?}", could_go_home);
         assert_eq!(could_go_home.len(), 1);
-        let (amphipod_move, energy, is_home) = could_go_home[0];
-        assert_eq!(amphipod_move, ((0, 0), (5, 3)));
-        assert_eq!(energy, 30);
+        let (amphipod_move, is_home) = could_go_home[0];
+        assert_eq!(amphipod_move, (MapType::AmphipodBronze, (0, 0), (5, 3), 30));
         assert_eq!(is_home, IsHome::Yes);
     }
 }
