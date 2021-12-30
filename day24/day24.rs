@@ -1,7 +1,7 @@
-use itertools::Itertools;
-use std::collections::HashMap;
+
+
 use std::env;
-use std::fmt;
+
 
 type Registers = Vec<i64>;
 
@@ -38,7 +38,7 @@ struct ALU {
 
 impl Instruction {
     pub fn from_string(input: &str) -> Self {
-        let mut tokens = input.split(" ");
+        let mut tokens = input.split(' ');
         let verb = match tokens.next() {
             Some("inp") => Verb::Input,
             Some("add") => Verb::Add,
@@ -140,7 +140,7 @@ impl ALU {
         Self {
             instructions: input
                 .lines()
-                .map(|line| Instruction::from_string(line))
+                .map(Instruction::from_string)
                 .collect::<Vec<Instruction>>(),
             registers: vec![0, 0, 0, 0],
         }
@@ -157,7 +157,7 @@ impl ALU {
     }
 }
 
-fn solve_part1(inputfile: String) -> i64 {
+fn solve_part1(_inputfile: String) -> i64 {
     /*
     let mut alu = ALU::from_file(&inputfile);
 
@@ -271,7 +271,7 @@ fn solve_part1(inputfile: String) -> i64 {
     0
 }
 
-fn solve_part2(inputfile: String) -> i64 {
+fn solve_part2(_inputfile: String) -> i64 {
     for a in 0..9 {
         for b in 0..9 {
             for c in 0..9 {
@@ -377,7 +377,7 @@ fn full_equivalent(
     }
 
     if ((z % 26) + -11) == d {
-        z = z / 26
+        z /= 26
     } else {
         z = ((z / 26) * 26) + (d + 7)
     }
@@ -395,7 +395,7 @@ fn full_equivalent(
     }
 
     if ((z % 26) + -7) == h {
-        z = z / 26
+        z /= 26
     } else {
         z = ((z / 26) * 26) + (h + 15)
     }
@@ -405,36 +405,36 @@ fn full_equivalent(
     }
 
     if ((z % 26) + -6) == j {
-        z = z / 26
+        z /= 26
     } else {
         z = ((z / 26) * 26) + (j + 5)
     }
 
     if ((z % 26) + -10) == k {
-        z = z / 26
+        z /= 26
     } else {
         z = ((z / 26) * 26) + (k + 12)
     }
 
     if ((z % 26) + -15) == l {
-        z = z / 26
+        z /= 26
     } else {
         z = ((z / 26) * 26) + (l + 11)
     }
 
     if ((z % 26) + -9) == m {
-        z = z / 26
+        z /= 26
     } else {
         z = ((z / 26) * 26) + (m + 13)
     }
 
     if ((z % 26) + 0) == n {
-        z = z / 26
+        z /= 26
     } else {
         z = ((z / 26) * 26) + (n + 7)
     }
 
-    return z;
+    z
 }
 
 fn equivalent(z: i64, w: i64, div_constant: i64, factor1: i64, factor2: i64) -> i64 {
@@ -485,7 +485,7 @@ mod tests {
             let result = alu.calculate(&mut input_stream);
 
             {
-                let input_stream = vec![1, 3, 5, 7, 9, 2, 4, 6, 8, 9, 9, 9, 9, 9];
+                let _input_stream = vec![1, 3, 5, 7, 9, 2, 4, 6, 8, 9, 9, 9, 9, 9];
                 //let input_stream = vec![9, 9, 9, 9, 9, 8, 6, 4, 2, 9, 7, 5, 3, 1];
 
                 let eqv_result = full_equivalent(1, 3, 5, 7, 9, 2, 4, 6, 8, 9, 9, 9, 9, 9);

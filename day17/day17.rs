@@ -2,8 +2,6 @@ use itertools::Itertools;
 use regex::Regex;
 use std::cmp::max;
 use std::cmp::min;
-use std::collections::HashMap;
-use std::env;
 
 type Coordinate = (i32, i32);
 type Vector = (i32, i32);
@@ -92,9 +90,9 @@ struct TrajectoryRange<'b> {
 impl<'b> TrajectoryRange<'b> {
     fn new(trajectory: &Trajectory, target: &'b Target) -> Self {
         Self {
-            start: trajectory.clone(),
-            current: trajectory.clone(),
-            target: target,
+            start: *trajectory,
+            current: *trajectory,
+            target,
         }
     }
 }
@@ -105,7 +103,7 @@ impl<'b> Iterator for TrajectoryRange<'b> {
         self.current.step();
 
         if self.target.has_missed_target(self.current.position) {
-            return None;
+            None
         } else {
             Some(self.current)
         }
@@ -192,8 +190,8 @@ fn draw_image(
     let x_max = target.x_max();
     let y_min = y_limits.0;
     let y_max = y_limits.1;
-    let x_range = (1 + x_max - x_min);
-    let y_range = (1 + y_max - y_min);
+    let x_range = 1 + x_max - x_min;
+    let y_range = 1 + y_max - y_min;
     let dimensions: Coordinate = (x_range, y_range);
 
     let border = 2;
@@ -216,10 +214,8 @@ fn draw_image(
         }
     }
 
-    for (index, trajectory) in trajectories.iter().enumerate() {
+    for (color_index, trajectory) in trajectories.iter().enumerate() {
         for current in TrajectoryRange::new(trajectory, target) {
-            let color_index = index;
-            let (x, y) = current.position;
             draw_pixel(&mut pixels, current.position, block_size, color_index);
         }
     }
@@ -263,7 +259,7 @@ fn main() {
     println!("Part1: {}", solve_part1());
     println!("Part2: {}", solve_part2());
 
-    let mut frame = 0;
+    let frame = 0;
     let target = Target::new("target area: x=20..30, y=-10..-5");
     //let target = Target::new("target area: x=25..67, y=-260..-200");
     let startpoint: Coordinate = (0, 0);

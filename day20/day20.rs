@@ -1,4 +1,4 @@
-use itertools::Itertools;
+
 use std::collections::HashMap;
 use std::env;
 
@@ -37,16 +37,14 @@ impl ImageEnhancer {
                         } else {
                             0
                         }
-                    } else {
-                        if let Some(is_lit) = image.pixels.get(&position) {
-                            if *is_lit {
-                                1
-                            } else {
-                                0
-                            }
+                    } else if let Some(is_lit) = image.pixels.get(&position) {
+                        if *is_lit {
+                            1
                         } else {
                             0
                         }
+                    } else {
+                        0
                     };
 
                     acc + (value << (8 - index))
@@ -104,7 +102,7 @@ impl Image {
                     .collect::<Vec<(Coordinate, bool)>>()
             })
             .flatten()
-            .filter(|(pos, has_value)| *has_value)
+            .filter(|(_pos, has_value)| *has_value)
             .collect::<HashMap<Coordinate, bool>>();
     }
 }
@@ -152,7 +150,7 @@ impl Iterator for AdjacentPixels {
 }
 
 fn solve_part1(inputfile: String) -> usize {
-    let mut text_parts = std::fs::read_to_string(inputfile)
+    let text_parts = std::fs::read_to_string(inputfile)
         .expect("Something went wrong reading the file")
         .split("\n\n")
         .map(|blob| blob.to_string())
@@ -174,7 +172,7 @@ fn solve_part1(inputfile: String) -> usize {
 }
 
 fn solve_part2(inputfile: String) -> usize {
-    let mut text_parts = std::fs::read_to_string(inputfile)
+    let text_parts = std::fs::read_to_string(inputfile)
         .expect("Something went wrong reading the file")
         .split("\n\n")
         .map(|blob| blob.to_string())
@@ -297,7 +295,7 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    
     #[test]
     fn test_small_example() {}
 }

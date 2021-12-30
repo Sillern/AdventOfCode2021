@@ -8,7 +8,7 @@ fn get_closing_counterpart(open: char) -> char {
     let (open_index, _) = open_lut
         .iter()
         .enumerate()
-        .find(|(index, x)| **x == open)
+        .find(|(_index, x)| **x == open)
         .unwrap();
 
     *close_lut.get(open_index).unwrap()
@@ -18,7 +18,7 @@ fn is_counterpart(open: char, close: char) -> bool {
     let open_lut = vec!['[', '(', '{', '<'];
     let close_lut = vec![']', ')', '}', '>'];
 
-    match close_lut.iter().enumerate().find(|(index, x)| **x == close) {
+    match close_lut.iter().enumerate().find(|(_index, x)| **x == close) {
         Some((close_index, _)) => match open_lut.get(close_index) {
             Some(open_ch) => *open_ch == open,
             None => false,
@@ -33,7 +33,7 @@ fn solve_part1(inputfile: String) -> usize {
 
     let mut syntax_error_score = 0;
 
-    let positions = contents.lines().for_each(|line| {
+    let _positions = contents.lines().for_each(|line| {
         let mut stack: Vec<char> = vec![];
         for ch in line.chars() {
             match ch {
@@ -45,7 +45,7 @@ fn solve_part1(inputfile: String) -> usize {
                         if is_counterpart(matching, ch) {
                             //println!("popping {}", ch);
                         } else {
-                            syntax_error_score += match (ch) {
+                            syntax_error_score += match ch {
                                 ']' => 57,
                                 ')' => 3,
                                 '}' => 1197,
@@ -71,7 +71,7 @@ fn solve_part2(inputfile: String) -> usize {
     let contents =
         std::fs::read_to_string(inputfile).expect("Something went wrong reading the file");
 
-    let mut completion_error_score = 0;
+    let _completion_error_score = 0;
 
     let completion_error_scores = contents
         .lines()

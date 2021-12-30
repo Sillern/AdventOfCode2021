@@ -1,6 +1,6 @@
 use itertools::Itertools;
-use rand::seq::SliceRandom;
-use rand::{thread_rng, Rng};
+
+
 use std::collections::HashMap;
 use std::env;
 
@@ -8,11 +8,11 @@ fn parse_input(inputfile: String) -> (Vec<char>, HashMap<(char, char), char>) {
     let mut template: Vec<char> = vec![];
     let mut rules: HashMap<(char, char), char> = HashMap::new();
 
-    let contents = std::fs::read_to_string(inputfile)
+    let _contents = std::fs::read_to_string(inputfile)
         .expect("Something went wrong reading the file")
         .lines()
         .for_each(|line| {
-            if line == "" {
+            if line.is_empty() {
             } else if line.contains(" -> ") {
                 let mut tokens = line.split(" -> ");
 
@@ -36,7 +36,7 @@ fn parse_input(inputfile: String) -> (Vec<char>, HashMap<(char, char), char>) {
 fn solve_part1(inputfile: String) -> usize {
     let (mut template, rules) = parse_input(inputfile);
 
-    for step in 0..10 {
+    for _step in 0..10 {
         template = template
             .iter()
             .peekable()
@@ -47,7 +47,7 @@ fn solve_part1(inputfile: String) -> usize {
                             let mut it_copy = it.clone();
                             it_copy.next();
 
-                            if let Some(c) = it_copy.peek() {
+                            if let Some(_c) = it_copy.peek() {
                                 Some(vec![*a, *injection])
                             } else {
                                 Some(vec![*a, *injection, *b])
@@ -75,7 +75,7 @@ fn solve_part1(inputfile: String) -> usize {
 }
 
 fn solve_part2(inputfile: String) -> usize {
-    let (mut template, rules) = parse_input(inputfile);
+    let (template, rules) = parse_input(inputfile);
 
     let mut frequencies: HashMap<Vec<char>, usize> = template
         .iter()
@@ -90,7 +90,7 @@ fn solve_part2(inputfile: String) -> usize {
             .or_insert(1);
     }
 
-    for step in 0..40 {
+    for _step in 0..40 {
         let keys = frequencies
             .iter()
             .filter_map(|(key, count)| {

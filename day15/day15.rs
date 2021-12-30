@@ -1,5 +1,5 @@
-use rand::seq::SliceRandom;
-use rand::{thread_rng, Rng};
+
+
 
 use std::collections::HashMap;
 use std::env;
@@ -202,8 +202,8 @@ fn draw_image_all_tiles(
     let x_max = image_data.iter().map(|(pos, _)| pos.0).max().unwrap();
     let y_min = image_data.iter().map(|(pos, _)| pos.1).min().unwrap();
     let y_max = image_data.iter().map(|(pos, _)| pos.1).max().unwrap();
-    let tile_x_range = (1 + x_max - x_min);
-    let tile_y_range = (1 + y_max - y_min);
+    let tile_x_range = 1 + x_max - x_min;
+    let tile_y_range = 1 + y_max - y_min;
     let tile_size = (tile_x_range as i32, tile_y_range as i32);
     let x_range = (tiles.0 * tile_x_range) as u32;
     let y_range = (tiles.1 * tile_x_range) as u32;
@@ -385,7 +385,7 @@ fn get_shortest_path_all_tiles(
                     }
                 }
 
-                let wrapped_position = get_wrapped_position(&position, &tile_size);
+                let _wrapped_position = get_wrapped_position(&position, &tile_size);
                 for neighbour in AdjacentRange::new(position) {
                     if neighbour.0 > end.0 || neighbour.1 > end.1 {
                         continue;
@@ -438,12 +438,12 @@ fn get_shortest_path_all_tiles(
 }
 
 fn solve_part1(inputfile: String) -> u32 {
-    let mut map = parse_input(inputfile);
+    let map = parse_input(inputfile);
     get_shortest_path(&map, (0, 0))
 }
 
 fn solve_part2(inputfile: String) -> u32 {
-    let mut map = parse_input(inputfile);
+    let map = parse_input(inputfile);
     get_shortest_path_all_tiles(&map, (0, 0), (5, 5))
 }
 

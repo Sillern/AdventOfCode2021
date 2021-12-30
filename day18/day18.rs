@@ -40,12 +40,12 @@ impl SnailFish {
     }
 
     fn magnitude(&self) -> usize {
-        let a_value = if self.a.len() != 0 {
+        let a_value = if !self.a.is_empty() {
             self.a[0].magnitude()
         } else {
             self.a_literal
         };
-        let b_value = if self.b.len() != 0 {
+        let b_value = if !self.b.is_empty() {
             self.b[0].magnitude()
         } else {
             self.b_literal
@@ -55,25 +55,23 @@ impl SnailFish {
     }
 
     fn could_explode(&self, num_pairs: usize) -> bool {
-        if num_pairs == 3 && (self.a.len() != 0 || self.b.len() != 0) {
+        if num_pairs == 3 && (!self.a.is_empty() || !self.b.is_empty()) {
             true
+        } else if self.a.is_empty() && !self.b.is_empty() {
+            self.b[0].could_explode(num_pairs + 1)
+        } else if self.b.is_empty() && !self.a.is_empty() {
+            self.a[0].could_explode(num_pairs + 1)
+        } else if self.a.is_empty() && self.b.is_empty() {
+            false
         } else {
-            if self.a.len() == 0 && self.b.len() != 0 {
-                self.b[0].could_explode(num_pairs + 1)
-            } else if self.b.len() == 0 && self.a.len() != 0 {
-                self.a[0].could_explode(num_pairs + 1)
-            } else if self.a.len() == 0 && self.b.len() == 0 {
-                false
-            } else {
-                let a = self.a[0].could_explode(num_pairs + 1);
-                let b = self.b[0].could_explode(num_pairs + 1);
-                a || b
-            }
+            let a = self.a[0].could_explode(num_pairs + 1);
+            let b = self.b[0].could_explode(num_pairs + 1);
+            a || b
         }
     }
 
     fn add_leftmost(&mut self, value: usize) {
-        if self.a.len() == 0 {
+        if self.a.is_empty() {
             self.a_literal += value;
         } else {
             self.a[0].add_leftmost(value);
@@ -81,7 +79,7 @@ impl SnailFish {
     }
 
     fn add_rightmost(&mut self, value: usize) {
-        if self.b.len() == 0 {
+        if self.b.is_empty() {
             self.b_literal += value;
         } else {
             self.b[0].add_rightmost(value);
@@ -90,15 +88,15 @@ impl SnailFish {
 
     fn explode(&mut self, num_pairs: usize, has_exploded: bool) -> (usize, usize, bool) {
         if !has_exploded {
-            if num_pairs == 3 && (self.a.len() != 0 || self.b.len() != 0) {
-                if self.a.len() != 0 {
-                    assert!(self.a[0].b.len() == 0);
-                    assert!(self.a[0].a.len() == 0);
+            if num_pairs == 3 && (!self.a.is_empty() || !self.b.is_empty()) {
+                if !self.a.is_empty() {
+                    assert!(self.a[0].b.is_empty());
+                    assert!(self.a[0].a.is_empty());
 
                     let a = self.a[0].a_literal;
                     let mut b = self.a[0].b_literal;
 
-                    if self.b.len() == 0 {
+                    if self.b.is_empty() {
                         self.b_literal += b;
                         b = 0;
                     } else {
@@ -109,14 +107,14 @@ impl SnailFish {
                     self.a_literal = 0;
                     self.a = vec![];
                     (a, b, true)
-                } else if self.b.len() != 0 {
-                    assert!(self.b[0].a.len() == 0);
-                    assert!(self.b[0].b.len() == 0);
+                } else if !self.b.is_empty() {
+                    assert!(self.b[0].a.is_empty());
+                    assert!(self.b[0].b.is_empty());
 
                     let mut a = self.b[0].a_literal;
                     let b = self.b[0].b_literal;
 
-                    if self.a.len() == 0 {
+                    if self.a.is_empty() {
                         self.a_literal += a;
                         a = 0;
                     } else {
@@ -130,50 +128,48 @@ impl SnailFish {
                     panic!();
                     (0, 0, has_exploded)
                 }
-            } else {
-                if self.a.len() == 0 && self.b.len() != 0 {
-                    let values = self.b[0].explode(num_pairs + 1, has_exploded);
-                    let mut a = values.0;
-                    let mut b = values.1;
+            } else if self.a.is_empty() && !self.b.is_empty() {
+                let values = self.b[0].explode(num_pairs + 1, has_exploded);
+                let mut a = values.0;
+                let b = values.1;
 
-                    if values.2 {
-                        self.a_literal += a;
-                        a = 0;
-                    }
-                    (a, b, values.2)
-                } else if self.b.len() == 0 && self.a.len() != 0 {
-                    let values = self.a[0].explode(num_pairs + 1, has_exploded);
-                    let mut a = values.0;
-                    let mut b = values.1;
-                    if values.2 {
-                        self.b_literal += b;
-                        b = 0;
-                    }
-                    (a, b, values.2)
-                } else if self.a.len() == 0 && self.b.len() == 0 {
-                    assert!(!has_exploded);
-                    (0, 0, has_exploded)
-                } else {
-                    let a_values = self.a[0].explode(num_pairs + 1, has_exploded);
-                    if a_values.2 {
-                        if a_values.1 != 0 {
-                            self.b[0].add_leftmost(a_values.1);
-                        }
-
-                        return (a_values.0, 0, true);
-                    } else {
-                        let b_values = self.b[0].explode(num_pairs + 1, has_exploded);
-
-                        if b_values.2 {
-                            if b_values.0 != 0 {
-                                self.a[0].add_rightmost(b_values.0);
-                            }
-                            return (0, b_values.1, true);
-                        }
-                    }
-
-                    a_values
+                if values.2 {
+                    self.a_literal += a;
+                    a = 0;
                 }
+                (a, b, values.2)
+            } else if self.b.is_empty() && !self.a.is_empty() {
+                let values = self.a[0].explode(num_pairs + 1, has_exploded);
+                let a = values.0;
+                let mut b = values.1;
+                if values.2 {
+                    self.b_literal += b;
+                    b = 0;
+                }
+                (a, b, values.2)
+            } else if self.a.is_empty() && self.b.is_empty() {
+                assert!(!has_exploded);
+                (0, 0, has_exploded)
+            } else {
+                let a_values = self.a[0].explode(num_pairs + 1, has_exploded);
+                if a_values.2 {
+                    if a_values.1 != 0 {
+                        self.b[0].add_leftmost(a_values.1);
+                    }
+
+                    return (a_values.0, 0, true);
+                } else {
+                    let b_values = self.b[0].explode(num_pairs + 1, has_exploded);
+
+                    if b_values.2 {
+                        if b_values.0 != 0 {
+                            self.a[0].add_rightmost(b_values.0);
+                        }
+                        return (0, b_values.1, true);
+                    }
+                }
+
+                a_values
             }
         } else {
             panic!();
@@ -182,21 +178,21 @@ impl SnailFish {
     }
 
     fn could_split(&self) -> bool {
-        let a_could_split = if self.a.len() != 0 {
+        let a_could_split = if !self.a.is_empty() {
             self.a[0].could_split()
         } else {
             false
         };
 
-        let b_could_split = if self.b.len() != 0 {
+        let b_could_split = if !self.b.is_empty() {
             self.b[0].could_split()
         } else {
             false
         };
 
-        if self.a.len() == 0 && self.a_literal >= 10 {
+        if self.a.is_empty() && self.a_literal >= 10 {
             true
-        } else if self.b.len() == 0 && self.b_literal >= 10 {
+        } else if self.b.is_empty() && self.b_literal >= 10 {
             true
         } else {
             a_could_split || b_could_split
@@ -204,7 +200,7 @@ impl SnailFish {
     }
 
     fn split(&mut self, has_split: bool) -> bool {
-        let a_has_split = if self.a.len() != 0 {
+        let a_has_split = if !self.a.is_empty() {
             self.a[0].split(has_split)
         } else if !has_split && self.a_literal >= 10 {
             self.a.push(Self::from_literal(self.a_literal));
@@ -214,7 +210,7 @@ impl SnailFish {
             false
         };
 
-        let b_has_split = if self.b.len() != 0 {
+        let b_has_split = if !self.b.is_empty() {
             self.b[0].split(has_split || a_has_split)
         } else if !has_split && !a_has_split && self.b_literal >= 10 {
             self.b.push(Self::from_literal(self.b_literal));
@@ -274,12 +270,10 @@ fn parse_snailfish(it: &mut dyn Iterator<Item = char>, first_iteration: bool) ->
 
                 if first_iteration {
                     snailfish = next_snailfish;
+                } else if first_value {
+                    snailfish.a.push(next_snailfish);
                 } else {
-                    if first_value {
-                        snailfish.a.push(next_snailfish);
-                    } else {
-                        snailfish.b.push(next_snailfish);
-                    }
+                    snailfish.b.push(next_snailfish);
                 }
             }
             Some(']') => break,
@@ -310,7 +304,7 @@ fn solve_part1(inputfile: String) -> usize {
     std::fs::read_to_string(inputfile)
         .expect("Something went wrong reading the file")
         .lines()
-        .map(|input| parse_string(input))
+        .map(parse_string)
         .reduce(|sum, snailfish| sum + snailfish)
         .unwrap()
         .magnitude()
@@ -320,7 +314,7 @@ fn solve_part2(inputfile: String) -> usize {
     std::fs::read_to_string(inputfile)
         .expect("Something went wrong reading the file")
         .lines()
-        .map(|input| parse_string(input))
+        .map(parse_string)
         .permutations(2)
         .fold(0, |max, values| {
             let c = values

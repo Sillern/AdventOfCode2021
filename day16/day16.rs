@@ -219,7 +219,7 @@ fn parse_input(inputfile: String) -> Vec<Packet> {
     std::fs::read_to_string(inputfile)
         .expect("Something went wrong reading the file")
         .lines()
-        .map(|line| parse_string(line))
+        .map(parse_string)
         .flatten()
         .collect::<Vec<Packet>>()
 }

@@ -1,8 +1,8 @@
 use itertools::Itertools;
 use std::collections::HashMap;
 use std::env;
-use std::fmt;
-use std::ops;
+
+
 
 type Coordinate = (i32, i32, i32);
 #[derive(Debug)]
@@ -19,7 +19,7 @@ impl Scanner {
         let detections = it
             .map(|line| {
                 let values = line
-                    .split(",")
+                    .split(',')
                     .map(|value| value.parse::<i32>().unwrap())
                     .collect::<Vec<i32>>();
 
@@ -33,7 +33,7 @@ impl Scanner {
         Self {
             position: (0, 0, 0),
             id: name
-                .split(" ")
+                .split(' ')
                 .filter_map(|token| {
                     if let std::result::Result::Ok(result) = token.parse::<i32>() {
                         Some(result)
@@ -43,7 +43,7 @@ impl Scanner {
                 })
                 .next()
                 .unwrap(),
-            detections: detections,
+            detections,
         }
     }
 
@@ -204,8 +204,7 @@ impl Scanner {
                                 .iter(),
                         )
                         .sorted()
-                        .unique()
-                        .map(|pos| *pos)
+                        .unique().copied()
                         .collect();
 
                     true
@@ -335,7 +334,7 @@ fn print_map(map: &HashMap<Coordinate, usize>) {
         (block_size * (dimensions.0 + border * 2)),
         (block_size * (dimensions.1 + border * 2)),
     );
-    let real_size = ((scale * virtual_size.0), (scale * virtual_size.1));
+    let _real_size = ((scale * virtual_size.0), (scale * virtual_size.1));
 
     for z in z_min..z_max {
         for y in y_min..y_max {
@@ -356,8 +355,8 @@ fn solve_parts(inputfile: String) -> (usize, usize) {
         .expect("Scanner went wrong reading the file")
         .split("\n\n")
         .map(|textblob| {
-            let scanner = Scanner::from_string(textblob);
-            scanner
+            
+            Scanner::from_string(textblob)
         })
         .collect::<Vec<Scanner>>();
 
@@ -365,7 +364,7 @@ fn solve_parts(inputfile: String) -> (usize, usize) {
 
     let mut scanner_positions = vec![];
 
-    while scanners.len() != 0 {
+    while !scanners.is_empty() {
         let scanner = scanners.pop().unwrap();
         if let Some(scanner_position) = global_map.find_match(&scanner, 12) {
             println!("best match[{}]: {:?}", scanner.id, scanner_position);

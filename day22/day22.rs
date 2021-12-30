@@ -1,7 +1,5 @@
-use itertools::Itertools;
 use regex::Regex;
-use std::cmp::max;
-use std::cmp::min;
+
 use std::collections::HashMap;
 use std::env;
 
@@ -59,7 +57,7 @@ impl Reactor {
         Self {
             reboot_instructions: input
                 .lines()
-                .map(|line| Cuboid::from_string(line))
+                .map(Cuboid::from_string)
                 .collect::<Vec<Cuboid>>(),
             reboot_index: 0,
             cubes: HashMap::<Coordinate, bool>::new(),

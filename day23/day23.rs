@@ -1,6 +1,6 @@
 use itertools::Itertools;
 use std::collections::HashMap;
-use std::fmt;
+
 
 type Energy = usize;
 type Coordinate = (i32, i32);
@@ -103,7 +103,7 @@ fn get_valid_locations(
     amphipod_type: &MapType,
     map: &HashMap<Coordinate, MapType>,
 ) -> Vec<(Coordinate, Energy)> {
-    let mut valid_hallways = vec![(1, 1), (2, 1), (4, 1), (6, 1), (8, 1), (10, 1), (11, 1)];
+    let valid_hallways = vec![(1, 1), (2, 1), (4, 1), (6, 1), (8, 1), (10, 1), (11, 1)];
     let home_cave_x_position = match amphipod_type {
         MapType::AmphipodAmber => 3,
         MapType::AmphipodBronze => 5,
@@ -147,7 +147,7 @@ fn get_valid_locations(
             })
         {
             let coordinate = (home_cave_x_position, furthest_in_y_position);
-            if let Some(valid_path) = get_path(&amphipod_position, &coordinate, map) {
+            if let Some(valid_path) = get_path(amphipod_position, &coordinate, map) {
                 return vec![(
                     coordinate,
                     get_energy_cost(amphipod_type) * valid_path.len(),
@@ -156,7 +156,7 @@ fn get_valid_locations(
         }
     }
 
-    if valid_hallways.contains(&amphipod_position) {
+    if valid_hallways.contains(amphipod_position) {
         // is in the hallway can only go to an empty home cave, or non guest home cave
         return vec![];
     } else {
@@ -164,14 +164,10 @@ fn get_valid_locations(
         valid_hallways
             .iter()
             .filter_map(|coordinate| {
-                if let Some(valid_path) = get_path(&amphipod_position, coordinate, map) {
-                    Some((
+                get_path(amphipod_position, coordinate, map).map(|valid_path| (
                         *coordinate,
                         get_energy_cost(amphipod_type) * valid_path.len(),
                     ))
-                } else {
-                    None
-                }
             })
             .collect::<Vec<(Coordinate, Energy)>>()
     }
@@ -179,7 +175,7 @@ fn get_valid_locations(
 
 fn num_amphipods(map: &Map) -> usize {
     map.iter()
-        .filter(|(coordinate, map_type)| match map_type {
+        .filter(|(_coordinate, map_type)| match map_type {
             MapType::AmphipodAmber
             | MapType::AmphipodBronze
             | MapType::AmphipodCopper
@@ -215,12 +211,10 @@ fn num_organized_amphipods(map: &Map) -> usize {
             .filter(|y| {
                 if *y == hallway_y_position {
                     false
+                } else if let Some(map_type) = map.get(&(home_cave_x_position, *y)) {
+                    *map_type == amphipod_type
                 } else {
-                    if let Some(map_type) = map.get(&(home_cave_x_position, *y)) {
-                        *map_type == amphipod_type
-                    } else {
-                        false
-                    }
+                    false
                 }
             })
             .count();
@@ -261,8 +255,8 @@ fn print_map(map: &HashMap<Coordinate, MapType>) {
 
 fn make_move(map: &mut Map, next_move: &Move) {
     let (map_type, from, to, _) = next_move;
-    map.entry(to.clone()).and_modify(|dest| *dest = *map_type);
-    map.entry(from.clone())
+    map.entry(*to).and_modify(|dest| *dest = *map_type);
+    map.entry(*from)
         .and_modify(|source| *source = MapType::Path);
 }
 
@@ -273,8 +267,8 @@ fn get_valid_moves(map: &Map) -> Vec<Move> {
             | MapType::AmphipodBronze
             | MapType::AmphipodCopper
             | MapType::AmphipodDesert => {
-                let valid_locations = get_valid_locations(coordinate, &map_type, &map);
-                if valid_locations.len() != 0 {
+                let valid_locations = get_valid_locations(coordinate, map_type, map);
+                if !valid_locations.is_empty() {
                     Some(
                         valid_locations
                             .iter()
@@ -294,7 +288,7 @@ fn get_valid_moves(map: &Map) -> Vec<Move> {
 fn organize(map: &mut Map) -> usize {
     let mut queue = vec![(0, map.clone(), vec![])];
 
-    let organized_count = num_amphipods(&map);
+    let organized_count = num_amphipods(map);
 
     fn get_home_cave(amphipod_type: &MapType) -> Vec<Coordinate> {
         match amphipod_type {
@@ -368,7 +362,7 @@ fn organize(map: &mut Map) -> usize {
 }
 
 fn solve_part1() -> usize {
-    let mut burrows_example = map_from_string(
+    let _burrows_example = map_from_string(
         "#############
 #...........#
 ###B#C#B#D###
@@ -410,7 +404,7 @@ mod tests {
     use super::*;
     #[test]
     fn test_get_path() {
-        let mut burrows = map_from_string(
+        let burrows = map_from_string(
             "#############
 #...B........#
 ###B#C#.#D###
@@ -425,7 +419,7 @@ mod tests {
 
     #[test]
     fn test_initial_burrows() {
-        let mut burrows = map_from_string(
+        let burrows = map_from_string(
             "#############
 #...........#
 ###B#C#B#D###
@@ -440,7 +434,7 @@ mod tests {
 
     #[test]
     fn test_initial_burrows2() {
-        let mut burrows = map_from_string(
+        let burrows = map_from_string(
             "#############
 #...........#
 ###B#C#B#D###
@@ -457,7 +451,7 @@ mod tests {
 
     #[test]
     fn test_organized_count() {
-        let mut burrows = map_from_string(
+        let burrows = map_from_string(
             "#############
 #.D.C...C.C.#
 ###A#B#.#.###
@@ -474,7 +468,7 @@ mod tests {
 
     #[test]
     fn test_initial_valid_locations() {
-        let mut burrows = map_from_string(
+        let burrows = map_from_string(
             "#############
 #...........#
 ###B#C#B#D###
@@ -488,7 +482,7 @@ mod tests {
 
     #[test]
     fn test_second_valid_locations() {
-        let mut burrows = map_from_string(
+        let burrows = map_from_string(
             "#############
 #...B.......#
 ###B#C#.#D###
@@ -502,7 +496,7 @@ mod tests {
 
     #[test]
     fn test_third_valid_locations() {
-        let mut burrows = map_from_string(
+        let burrows = map_from_string(
             "#############
 #...B.......#
 ###B#.#C#D###
@@ -516,7 +510,7 @@ mod tests {
 
     #[test]
     fn test_fourth_valid_locations() {
-        let mut burrows = map_from_string(
+        let burrows = map_from_string(
             "#############
 #...B.D.....#
 ###B#.#C#D###
@@ -530,7 +524,7 @@ mod tests {
 
     #[test]
     fn test_fifth_valid_locations() {
-        let mut burrows = map_from_string(
+        let burrows = map_from_string(
             "#############
 #.....D.....#
 ###B#.#C#D###
@@ -548,7 +542,7 @@ mod tests {
 
     #[test]
     fn test_sixth_valid_locations() {
-        let mut burrows = map_from_string(
+        let burrows = map_from_string(
             "#############
 #.....D.....#
 ###.#B#C#D###
@@ -562,7 +556,7 @@ mod tests {
 
     #[test]
     fn test_seventh_valid_locations() {
-        let mut burrows = map_from_string(
+        let burrows = map_from_string(
             "#############
 #.....D.D...#
 ###.#B#C#.###
@@ -576,7 +570,7 @@ mod tests {
 
     #[test]
     fn test_eigth_valid_locations() {
-        let mut burrows = map_from_string(
+        let burrows = map_from_string(
             "#############
 #.....D.D.A.#
 ###.#B#C#.###
@@ -590,7 +584,7 @@ mod tests {
 
     #[test]
     fn test_ninth_valid_locations() {
-        let mut burrows = map_from_string(
+        let burrows = map_from_string(
             "#############
 #.....D...A.#
 ###.#B#C#.###
@@ -604,7 +598,7 @@ mod tests {
 
     #[test]
     fn test_tenth_valid_locations() {
-        let mut burrows = map_from_string(
+        let burrows = map_from_string(
             "#############
 #.........A.#
 ###.#B#C#D###
@@ -619,7 +613,7 @@ mod tests {
     #[test]
     fn test_no_moves() {
         {
-            let mut burrows = map_from_string(
+            let burrows = map_from_string(
                 "#############
 #...A.......#
 ###A#.#C#D###
@@ -636,7 +630,7 @@ mod tests {
             assert_eq!(valid_moves.len(), 0);
         }
         {
-            let mut burrows = map_from_string(
+            let burrows = map_from_string(
                 "#############
 #.A.A.......#
 ###.#B#C#D###
@@ -648,7 +642,7 @@ mod tests {
             assert_eq!(valid_moves.len(), 0);
         }
         {
-            let mut burrows = map_from_string(
+            let burrows = map_from_string(
                 "#############
 #...........#
 ###A#B#C#D###
@@ -663,7 +657,7 @@ mod tests {
 
     #[test]
     fn test_detect_home_cave() {
-        let mut burrows = map_from_string(
+        let burrows = map_from_string(
             "#############
 #.....B.C...#
 ###B#C#.#D###

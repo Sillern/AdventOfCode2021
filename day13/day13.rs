@@ -1,6 +1,6 @@
 use itertools::Itertools;
-use rand::seq::SliceRandom;
-use rand::{thread_rng, Rng};
+
+
 use std::collections::HashMap;
 use std::env;
 
@@ -92,21 +92,21 @@ fn parse_input(inputfile: String) -> (Vec<Coordinate>, Vec<OptionalCoordinate>) 
     let mut coordinates: Vec<Coordinate> = vec![];
     let mut fold_along: Vec<OptionalCoordinate> = vec![];
 
-    let contents = std::fs::read_to_string(inputfile)
+    let _contents = std::fs::read_to_string(inputfile)
         .expect("Something went wrong reading the file")
         .lines()
         .for_each(|line| {
-            if line.contains(",") {
+            if line.contains(',') {
                 let tokens = line
-                    .split(",")
+                    .split(',')
                     .map(|token| token.parse::<i32>().unwrap())
                     .collect::<Vec<i32>>();
                 coordinates.push((tokens[0], tokens[1]));
-            } else if line.contains("=") {
-                line.split(" ")
-                    .filter(|token| token.contains("="))
+            } else if line.contains('=') {
+                line.split(' ')
+                    .filter(|token| token.contains('='))
                     .for_each(|token| {
-                        let mut parts = token.split("=");
+                        let mut parts = token.split('=');
                         let axis = parts.next().unwrap();
                         let value = parts.next().unwrap().parse::<i32>().unwrap();
 
@@ -167,7 +167,7 @@ fn solve_part2(inputfile: String) -> usize {
     draw_image(
         &coordinates
             .iter()
-            .map(|coord| (coord.clone(), 1))
+            .map(|coord| (*coord, 1))
             .collect::<HashMap<Coordinate, u32>>(),
         frame,
     );
@@ -178,7 +178,7 @@ fn solve_part2(inputfile: String) -> usize {
         draw_image(
             &coordinates
                 .iter()
-                .map(|coord| (coord.clone(), 1))
+                .map(|coord| (*coord, 1))
                 .collect::<HashMap<Coordinate, u32>>(),
             frame,
         );
